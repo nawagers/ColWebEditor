@@ -11,6 +11,7 @@
 // Added edting of Pacific Ocean
 // Added edting of roads & plowing
 // Added view toggles to reduce clutter during edits
+// Flag for visited villages
 
 
 // Future improvements:
@@ -243,15 +244,13 @@ function setup() {
   save_button.position(240, 0);
   save_button.mouseClicked(filesave);
   let export_button = createButton("Export");
-  export_button.attribute("disabled", "");
   export_button.position(290, 0);
-  export_button.mouseClicked(filesave);
+  export_button.mouseClicked(Export);
   let reset_depleted = createButton("Reset Depleted Mines");
   reset_depleted.position(0, 25);
   reset_depleted.mouseClicked(undeplete);
   let reset_lcr = createButton("Reset Rumors");
   reset_lcr.position(155, 25);
-  //reset_lcr.attribute("disabled", "");
   reset_lcr.mouseClicked(gossip);
   terrain_select = createSelect();
   terrain_select.option("Tundra/Boreal Forest", 0);
@@ -310,6 +309,7 @@ function setup() {
   draw();
 }
 
+
 function filesave() {
   let modcount = 0;
   for (let row = 1; row < game.mapheight - 1; row++) {
@@ -345,8 +345,8 @@ function filesave() {
   }
 
   game.bytes[game.tmapstart + 4 * game.mapsize + 0x264] = game.offsetbyte;
-  console.log("Modified ${modcount} tiles");
-  console.log("Setting prime: ${game.prime}, rumors: {game.lcr}");
+  console.log(`Modified ${modcount} tiles`);
+  console.log(`Setting prime: ${game.prime}, rumors: {game.lcr}`);
   saveByteArray([game.bytes], game.name);
 
   
@@ -842,4 +842,30 @@ function pacificmode() {
     feature_select.enable();
   }
   draw();
+}
+
+function Export(){
+  let len = game.mapsize * 3 + 6;
+  var mpfile = new Uint8Array(len);
+  mpfile[0] = game.mapwidth;
+  mpfile[1] = 0;
+  mpfile[2] = game.mapheight;
+  mpfile[3] = 0;
+  mpfile[4] = 4;  // no idea why this is 4
+  mpfile[5] = 0;
+
+  for (let row = 0; row < game.mapheight; row++) {
+    for (let col = 0; col < game.mapwidth; col++) {
+      
+      mpfile[game.mapsize + row * game.mapwidth + col + 6] = 0;
+      if (row == 0 || col == 0 || row == game.mapheight - 1 || col == game.mapwidth - 1){
+        mpfile[row * game.mapwidth + col + 6] = 25;
+        mpfile[2 * game.mapsize + row*game.mapwidth + col + 6] = 0;
+      } else {
+        mpfile[row * game.mapwidth + col + 6] = mapgrid[row][col].terrainbyte;
+        mpfile[2 * game.mapsize + row*game.mapwidth + col + 6] = 1;
+      }
+    }
+  }
+  saveByteArray([mpfile], 'MYCOLMAP.MP');
 }
