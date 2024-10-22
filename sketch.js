@@ -13,7 +13,6 @@
 // Added view toggles to reduce clutter during edits
 // Flag for visited villages
 
-
 // Future improvements:
 // Repair/set colony scores
 // Allow purchasing tribal land
@@ -56,17 +55,18 @@ let pacific_check;
 
 class Tile {
   constructor(terrain, mask, vis) {
+    // terrain bits (map 1)
     if (terrain & 0x10) {
       this.base = terrain & 0x1f; // use 5 bits if "special" bit activated
     } else {
       this.base = terrain & 0x07;
     }
-
     this.forested = Boolean(terrain & 0x08) && !Boolean(terrain & 0x10);
     this.hills = Boolean(terrain & 0x20);
     this.river = Boolean(terrain & 0x40);
     this.prominent = Boolean(terrain & 0x80);
 
+    // mask bits (map 2)
     this.unit = Boolean(mask & 0x01);
     this.colonybit = Boolean(mask & 0x02);
     this.depleted = Boolean(mask & 0x04);
@@ -76,12 +76,15 @@ class Tile {
     this.plowed = Boolean(mask & 0x40);
     this.unknownmaskbit = Boolean(mask & 0x80);
 
+    // vis bits (map 3)
     this.pathregion = vis & 0x0f;
     this.explorer = (vis & 0xf0) / 16;
 
+    // computed game state
     this.colony = null;
     this.village = null;
     this.modified = false;
+    this.parent = null;
   }
   get terrainbyte() {
     return (
@@ -120,7 +123,7 @@ class Tile {
     this.prominent = Boolean(terrain & 0x80);
     this.modified = true;
   }
-  get iswater(){
+  get iswater() {
     return [25, 26].includes(this.base);
   }
 }
@@ -136,7 +139,7 @@ class Gamestate {
     this.prime = filebytes[this.tmapstart + 4 * this.mapsize + 0x264] & 0xf;
     this.lcr =
       (filebytes[this.tmapstart + 4 * this.mapsize + 0x264] & 0xf0) / 16;
-    console.log("prime:", this.prime, " lcr:", this.lcr);
+    console.log(`Original prime: ${this.prime}, rumors: ${this.lcr}`);
     this.name = "COLONY00.SAV";
   }
   get offsetbyte() {
@@ -309,7 +312,6 @@ function setup() {
   draw();
 }
 
-
 function filesave() {
   let modcount = 0;
   for (let row = 1; row < game.mapheight - 1; row++) {
@@ -346,10 +348,13 @@ function filesave() {
 
   game.bytes[game.tmapstart + 4 * game.mapsize + 0x264] = game.offsetbyte;
   console.log(`Modified ${modcount} tiles`);
-  console.log(`Setting prime: ${game.prime}, rumors: {game.lcr}`);
+  console.log(`Setting prime: ${game.prime}, rumors: ${game.lcr}`);
+  if (!regioncheck()) {
+    alert(
+      "Warning: Some path regions seem broken. Make sure all land masses and waterbodies have the same region code for all connected tiles. Disconnected regions should have their own code. Use code 15 for all remaining regions if you run out. The biggest regions should use 1-14."
+    );
+  }
   saveByteArray([game.bytes], game.name);
-
-  
 }
 
 var saveByteArray = (function () {
@@ -415,7 +420,6 @@ function mouseClicked(event) {
   let col = Math.floor(event.pageX / 32);
   click_tile = mapgrid[row][col];
   if (region_check.checked()) {
-    console.log("update region");
     if (event.ctrlKey) {
       click_tile.pathregion += 15;
     } else {
@@ -494,7 +498,7 @@ function mouseClicked(event) {
 
 function loadFileBytes(file) {
   // Load bytes from file
-  console.log("Attempting binary read", file.name);
+  console.log(`Attempting binary read of ${file.name}`);
   let data;
   function wrap_fileread() {
     fileread(data, file.name);
@@ -519,11 +523,22 @@ function fileread(data, filename) {
     }
     mapgrid.push(tilerow);
   }
-  console.log(game.tmapstart.toString(16));
-  console.log(game.mmapstart.toString(16));
-  console.log(game.pmapstart.toString(16));
-  console.log(game.colstart.toString(16));
-  console.log(game.vilstart.toString(16));
+  console.log(
+    `Colony offset:      0x${game.colstart.toString(16).padStart(4, "0")}`
+  );
+  console.log(
+    `Village offset:     0x${game.vilstart.toString(16).padStart(4, "0")}`
+  );
+  console.log(
+    `Terrain map offset: 0x${game.tmapstart.toString(16).padStart(4, "0")}`
+  );
+  console.log(
+    `Mask map offset:    0x${game.mmapstart.toString(16).padStart(4, "0")}`
+  );
+  console.log(
+    `Path map offset:    0x${game.pmapstart.toString(16).padStart(4, "0")}`
+  );
+
   const powers = ["e", "f", "s", "d"];
   const structure = ["colony", "stockade", "", "fort", "", "", "", "fortress"];
   for (let i = 0; i < game.num_colonies; i++) {
@@ -686,13 +701,11 @@ function keyPressed() {
     game.prime %= 16;
     offshorefish();
     draw();
-    console.log(game.prime);
   } else if (keyCode === RIGHT_ARROW && keyIsDown(CONTROL) && game != null) {
     game.prime += 1;
     game.prime %= 16;
     offshorefish();
     draw();
-    console.log(game.prime);
   } else if (keyCode === UP_ARROW && keyIsDown(CONTROL) && game != null) {
     game.lcr += 1;
     game.lcr %= 16;
@@ -705,15 +718,13 @@ function keyPressed() {
 }
 
 function undeplete() {
+  console.log("Reset depleted prime tiles");
   if (game == null) {
     return;
   }
   for (let row = 1; row < game.mapheight - 1; row++) {
     for (let col = 1; col < game.mapwidth - 1; col++) {
-      if (
-        !mapgrid[row][col].iswater &&
-        mapgrid[row][col].depleted
-      ) {
+      if (!mapgrid[row][col].iswater && mapgrid[row][col].depleted) {
         mapgrid[row][col].depleted = false;
         mapgrid[row][col].modified = true;
       }
@@ -723,7 +734,7 @@ function undeplete() {
 }
 
 function gossip() {
-  console.log("start rumors");
+  console.log("Starting fresh rumors");
   if (game == null) {
     return;
   }
@@ -748,7 +759,7 @@ function gossip() {
 }
 
 function offshorefish() {
-  console.log("offshore fish");
+  console.log("Hiding offshore fish");
   if (game == null) {
     return;
   }
@@ -844,28 +855,131 @@ function pacificmode() {
   draw();
 }
 
-function Export(){
+function Export() {
+  console.log("Exporting to .MP");
   let len = game.mapsize * 3 + 6;
   var mpfile = new Uint8Array(len);
   mpfile[0] = game.mapwidth;
   mpfile[1] = 0;
   mpfile[2] = game.mapheight;
   mpfile[3] = 0;
-  mpfile[4] = 4;  // no idea why this is 4
+  mpfile[4] = 4; // no idea why this is 4
   mpfile[5] = 0;
 
   for (let row = 0; row < game.mapheight; row++) {
     for (let col = 0; col < game.mapwidth; col++) {
-      
       mpfile[game.mapsize + row * game.mapwidth + col + 6] = 0;
-      if (row == 0 || col == 0 || row == game.mapheight - 1 || col == game.mapwidth - 1){
+      if (
+        row == 0 ||
+        col == 0 ||
+        row == game.mapheight - 1 ||
+        col == game.mapwidth - 1
+      ) {
         mpfile[row * game.mapwidth + col + 6] = 25;
-        mpfile[2 * game.mapsize + row*game.mapwidth + col + 6] = 0;
+        mpfile[2 * game.mapsize + row * game.mapwidth + col + 6] = 0;
       } else {
         mpfile[row * game.mapwidth + col + 6] = mapgrid[row][col].terrainbyte;
-        mpfile[2 * game.mapsize + row*game.mapwidth + col + 6] = 1;
+        mpfile[2 * game.mapsize + row * game.mapwidth + col + 6] = 1;
       }
     }
   }
-  saveByteArray([mpfile], 'MYCOLMAP.MP');
+  if (!regioncheck()) {
+    alert(
+      "Warning: Some path regions seem broken. Make sure all land masses and waterbodies have the same region code for all connected tiles. Disconnected regions should have their own code. Use code 15 for all remaining regions if you run out. The biggest regions should use 1-14."
+    );
+  }
+  saveByteArray([mpfile], "MYCOLMAP.MP");
 }
+
+function regioncheck() {
+  function getroot(tile) {
+    if (tile.parent == null) {
+      return tile;
+    }
+    return getroot(tile.parent);
+  }
+  function updateparent(tile1, tile2) {
+    if (!(getroot(tile1) === getroot(tile2))) {
+      //console.log('different roots, update');
+      getroot(tile2).parent = getroot(tile1);
+    }
+    //console.log('same roots, do nothing');
+  }
+  // reset all parents to null
+  // check that boundary and only boundary are region 0
+  for (let row = 0; row < game.mapheight; row++) {
+    for (let col = 0; col < game.mapwidth; col++) {
+      mapgrid[row][col].parent = null;
+      if (
+        (mapgrid[row][col].pathregion == 0) !=
+        (row == 0 ||
+          col == 0 ||
+          row == game.mapheight - 1 ||
+          col == game.mapwidth - 1)
+      ) {
+        console.log(`Bad path region 0 at (${row}, ${col})`);
+        return false;
+      }
+    }
+  }
+
+  let regions = [];
+  for (let row = 1; row < game.mapheight - 1; row++) {
+    for (let col = 1; col < game.mapwidth - 1; col++) {
+      curr_tile = mapgrid[row][col];
+      //console.log(`Regions: ${regions.length} Tile (${row}, ${col}) iswater: ${curr_tile.iswater}, region: ${curr_tile.pathregion}`);
+      // check W, NW, N, NE tiles if same region, then copy parent
+      adjtile = [
+        mapgrid[row][col - 1],
+        mapgrid[row - 1][col - 1],
+        mapgrid[row - 1][col],
+        mapgrid[row - 1][col + 1],
+      ];
+      for (let x = 0; x < adjtile.length; x++) {
+        if (
+          curr_tile.iswater != adjtile[x].iswater ||
+          adjtile[x].pathregion == 0
+        ) {
+          //console.log((`Different land types at (${row}, ${col})`))
+          continue;
+        }
+        if (curr_tile.pathregion != adjtile[x].pathregion) {
+          console.log(`Mismatched path regions at (${row}, ${col})`);
+          return false;
+        }
+        if (curr_tile.parent != null) {
+          updateparent(curr_tile, adjtile[x]);
+        } else {
+          curr_tile.parent = getroot(adjtile[x]);
+        }
+      }
+
+      // else new parent
+      if (curr_tile.parent == null) {
+        regions.push(curr_tile);
+      }
+    }
+  }
+
+  regions = regions.filter((reg) => reg.parent == null);
+  console.log(`Found ${regions.length} disjoint regions`);
+  for (let i = 0; i < regions.length - 1; i++) {
+    for (let j = i + 1; j < regions.length; j++) {
+      //console.log(`Comparing region ${i} to ${j}`);
+      if (
+        regions[i].iswater == regions[j].iswater &&
+        regions[i].pathregion == regions[j].pathregion
+      ) {
+        console.log(
+          `${regions[i].iswater ? "Water" : "Land"} region ${
+            regions[i].pathregion
+          } is disjoint`
+        );
+        return false;
+      }
+    }
+  }
+  console.log("Regions OK");
+  return true;
+}
+
