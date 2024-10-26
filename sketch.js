@@ -1,17 +1,7 @@
 // Written by Nick Wagers
 // Released to the public domain
 // Attribution appreciated
-// Latest update 2024/10/18
-
-// Change log since initial release (2024/10/14)
-// Added view of colonies and villages
-// Added editing of pathing regions (allows Go To function)
-// Added view/changing of Prime and LCR tiles
-// Allow reset LCR
-// Added edting of Pacific Ocean
-// Added edting of roads & plowing
-// Added view toggles to reduce clutter during edits
-// Flag for visited villages
+// Latest update 2024/10/25
 
 // Future improvements:
 // Repair/set colony scores
@@ -19,15 +9,15 @@
 // Export maps to .mp format
 // Validate files using header
 // Add row/col numbers to border tiles
-// Detect bad region contiguity
-// Proper hosting
 
 let topnav = 70;
 const basetiles = new Map();
+const bigbasetiles = new Map();
 const primetiles = new Map();
 const units = new Map();
 let game = null;
 let mapgrid = [];
+let colonies = [];
 const primepattern = new Map([
   [0, [0, 10, 17, 27, 34, 40, 51, 57]],
   [1, [4, 14, 21, 31, 38, 44, 55, 61]],
@@ -52,6 +42,110 @@ let plow_check;
 let river_check;
 let region_check;
 let pacific_check;
+let view = "map";
+let map_controls = new Map();
+let colony_controls = new Map();
+
+const buildinggroups = new Map([
+  ["fortification", [null, "stockade", "fort", "fortress"]],
+  ["press", [null, "press", "newspaper"]],
+  ["church", [null, "church", "cathedral"]],
+  ["carpentersshop", ["carpentersshop", "lumbermill"]],
+  ["stable", [null, "stable"]],
+  ["warehouse", [null, "warehouse", "warehouseexpansion"]],
+  ["blacksmith", ["blacksmithshouse", "blacksmithsshop", "ironworks"]],
+  ["armory", [null, "armory", "magazine", "arsenal"]],
+  ["docks", [null, "docks", "drydock", "shipyard"]],
+  ["customhouse", [null, "customhouse"]],
+  ["schoolhouse", [null, "schoolhouse", "college", "university"]],
+  ["fur", ["furtradershouse", "furtradersshop", "furfactory"]],
+  ["cotton", ["weavershouse", "weaversshop", "textilemill"]],
+  ["rum", ["distillershouse", "distillersshop", "rumfactory"]],
+  ["tobacco", ["tobacconistshouse", "tobacconistsshop", "cigarfactory"]]
+]);
+
+buildingtext = new Map([
+  ["stockade", "Stockade"],
+  ["fort", "Fort"],
+  ["fortress", "Fortress"],
+  ["armory", "Armory"],
+  ["magazine", "Magazine"],
+  ["arsenal", "Arsenal"],
+  ["docks", "Docks"],
+  ["drydock", "Drydock"],
+  ["shipyard", "Shipyard"],
+  ["townhall", "Townhall"],
+  ["schoolhouse", "Schoolhouse"],
+  ["college", "College"],
+  ["university", "University"],
+  ["warehouse", "Warehouse"],
+  ["warehouseexpansion", "Warehouse Expansion"],
+  ["stable", "Stable"],
+  ["customhouse", "Custom House"],
+  ["press", "Printing Press"],
+  ["newspaper", "Newspaper"],
+  ["weavershouse", "Weaver's House"],
+  ["weaversshop", "Weaver's Shop"],
+  ["textilemill", "Textile Mill"],
+  ["tobacconistshouse", "Tobacconist's House"],
+  ["tobacconistsshop", "Tobacconist's Shop"],
+  ["cigarfactory", "Cigar Factory"],
+  ["distillershouse", "Distiller's House"],
+  ["distillersshop", "Distiller's Shop"],
+  ["rumfactory", "Rum Factory"],
+  ["furtradershouse", "Fur Trader's House"],
+  ["furtradersshop", "Fur Trader's Shop"],
+  ["furfactory", "Fur Factory"],
+  ["carpentersshop", "Carpenter's Shop"],
+  ["lumbermill", "Lumber Mill"],
+  ["church", "Church"],
+  ["cathedral", "Cathedral"],
+  ["blacksmithshouse", "Blacksmith's House"],
+  ["blacksmithsshop", "Blacksmith's Shop"],
+  ["ironworks", "Iron Works"],
+  [null, "(None)"]
+]);
+
+buildingbits = new Map([
+  ["stockade", [0x84, 0x1]],
+  ["fort", [0x84, 0x2]],
+  ["fortress", [0x84, 0x4]],
+  ["armory", [0x84, 0x8]],
+  ["magazine", [0x84, 0x10]],
+  ["arsenal", [0x84, 0x20]],
+  ["docks", [0x84, 0x40]],
+  ["drydock", [0x84, 0x80]],
+  ["shipyard", [0x85, 0x1]],
+  ["townhall", [0x85, 0x2]],
+  ["schoolhouse", [0x85, 0x10]],
+  ["college", [0x85, 0x20]],
+  ["university", [0x85, 0x40]],
+  ["warehouse", [0x85, 0x80]],
+  ["warehouseexpansion", [0x86, 0x1]],
+  ["stable", [0x86, 0x2]],
+  ["customhouse", [0x86, 0x4]],
+  ["press", [0x86, 0x8]],
+  ["newspaper", [0x86, 0x10]],
+  ["weavershouse", [0x86, 0x20]],
+  ["weaversshop", [0x86, 0x40]],
+  ["textilemill", [0x86, 0x80]],
+  ["tobacconistshouse", [0x87, 0x1]],
+  ["tobacconistsshop", [0x87, 0x2]],
+  ["cigarfactory", [0x87, 0x4]],
+  ["distillershouse", [0x87, 0x8]],
+  ["distillersshop", [0x87, 0x10]],
+  ["rumfactory", [0x87, 0x20]],
+  ["furtradershouse", [0x88, 0x1]],
+  ["furtradersshop", [0x88, 0x2]],
+  ["furfactory", [0x88, 0x4]],
+  ["carpentersshop", [0x88, 0x8]],
+  ["lumbermill", [0x88, 0x10]],
+  ["church", [0x88, 0x20]],
+  ["cathedral", [0x88, 0x40]],
+  ["blacksmithshouse", [0x88, 0x80]],
+  ["blacksmithsshop", [0x89, 0x1]],
+  ["ironworks", [0x89, 0x2]]
+]);
 
 class Tile {
   constructor(terrain, mask, vis) {
@@ -128,6 +222,74 @@ class Tile {
   }
 }
 
+class Colony {
+  constructor(bytes) {
+    this.col = bytes[0];
+    this.row = bytes[1];
+    console.log(`Position: (${this.row}, ${this.col})`);
+    this.name = String.fromCharCode(...bytes.slice(0x2, 0x1A)).split('\0', 1)[0];
+    console.log(this.name);
+    const powers = ["English", "French", "Spanish", "Dutch"];
+    this.power = bytes[0x1A];
+    console.log(powers[this.power]);
+
+    // 0x1C has some flags
+
+    this.population = bytes[0x1F];
+    this.occupation = bytes.slice(0x20, 0x40);
+    this.specialty = bytes.slice(0x40, 0x60);
+    this.spottime = [];
+    for (let i = 0; i < 16; i++) {
+      this.spottime.push(bytes[0x60 + i] & 0xF);
+      this.spottime.push((bytes[0x60 + i] >> 4) & 0xF);
+    }
+    this.field = new Map([
+      ['N', bytes[0x70]],
+      ['E', bytes[0x71]],
+      ['S', bytes[0x72]],
+      ['W', bytes[0x73]],
+      ['NW', bytes[0x74]],
+      ['NE', bytes[0x75]],
+      ['SE', bytes[0x76]],
+      ['SW', bytes[0x77]]
+    ]);
+    //16 unused bytes
+
+    // built structures
+    console.log(buildingbits);
+    for (const [name, [byte, bit]] of buildingbits.entries()) {
+      console.log(name, byte, bit);
+      this[name] = Boolean(bytes[byte] & bit);
+    }
+
+    this.exports = bytes[0x8A] + 256 * bytes[0x8B];
+
+    this.hammers = bytes[0x92] + 256 * bytes[0x93];
+    this.construction = bytes[0x94];
+
+    // unknown bytes
+
+    this.cargo = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    for (let i = 0; i < 16; i++) {
+      this.cargo[i] = bytes[0x9a + 2 * i] + 256 * bytes[0x9b + 2 * i];
+    }
+    this.sentiment = bytes[0xC2] + 256 * bytes[0xC3];
+    this.sentimentdivisor = bytes[0xC6] + 256 * bytes[0xC7];
+    console.log(this.buildingbytes);
+  }
+
+  get buildingbytes() {
+    let tmpbytes = new Uint8Array(6).fill(0);
+    for (const [name, [byte, bit]] of buildingbits.entries()) {
+      tmpbytes[byte - 0x84] += this[name] * bit;
+      //this[name] = Boolean(bytes[loc[0]] & loc[1]);
+    }
+
+    return tmpbytes;
+
+  }
+}
+
 class Gamestate {
   constructor(filebytes) {
     this.bytes = filebytes;
@@ -171,6 +333,7 @@ class Gamestate {
 }
 
 function preload() {
+  console.log('Loading sprites');
   basetiles.set(0, loadImage("images/tundra.png"));
   basetiles.set(1, loadImage("images/desert.png"));
   basetiles.set(2, loadImage("images/plains.png"));
@@ -187,6 +350,22 @@ function preload() {
   basetiles.set(64, loadImage("images/minorriver.png"));
   basetiles.set(160, loadImage("images/mountains.png"));
   basetiles.set(192, loadImage("images/majorriver.png"));
+  bigbasetiles.set(0, loadImage("images/bigtundra.png"));
+  bigbasetiles.set(1, loadImage("images/bigdesert.png"));
+  bigbasetiles.set(2, loadImage("images/bigplains.png"));
+  bigbasetiles.set(3, loadImage("images/bigprairie.png"));
+  bigbasetiles.set(4, loadImage("images/biggrassland.png"));
+  bigbasetiles.set(5, loadImage("images/bigsavannah.png"));
+  bigbasetiles.set(6, loadImage("images/bigmarsh.png"));
+  bigbasetiles.set(7, loadImage("images/bigswamp.png"));
+  bigbasetiles.set(8, loadImage("images/bigtrees.png"));
+  bigbasetiles.set(24, loadImage("images/bigarctic.png"));
+  bigbasetiles.set(25, loadImage("images/bigocean.png"));
+  bigbasetiles.set(26, loadImage("images/bigsealane.png"));
+  bigbasetiles.set(32, loadImage("images/bighills.png"));
+  bigbasetiles.set(64, loadImage("images/bigminorriver.png"));
+  bigbasetiles.set(160, loadImage("images/bigmountains.png"));
+  bigbasetiles.set(192, loadImage("images/bigmajorriver.png"));
   primetiles.set(-6, loadImage("images/lcrhighlight.png"));
   primetiles.set(-5, loadImage("images/lcr.png"));
   primetiles.set(-4, loadImage("images/suppressed-primehighlight-forest.png"));
@@ -237,9 +416,55 @@ function preload() {
   units.set("agrarian", loadImage("images/agrarian.png"));
   units.set("semi-nomadic", loadImage("images/semi-nomadic.png"));
   units.set("civilized", loadImage("images/civilized.png"));
+  units.set("colonyscreen", loadImage("images/colonyscreen.png"));
+  for (let i = 0; i < 10; i++) {
+    units.set(i, loadImage(`images/${i}.png`));
+  }
+  units.set("fence", loadImage("images/fence.png"));
+  units.set("stockade", loadImage("images/stockade.png"));
+  units.set("fort", loadImage("images/fort.png"));
+  units.set("fortress", loadImage("images/fortress.png"));
+  units.set("lumbermill", loadImage("images/lumbermill.png"));
+  units.set("carpentersshop", loadImage("images/carpentersshop.png"));
+  units.set("church", loadImage("images/church.png"));
+  units.set("cathedral", loadImage("images/cathedral.png"));
+  units.set("tobacconistshouse", loadImage("images/tobacconistshouse.png"));
+  units.set("tobacconistsshop", loadImage("images/tobacconistsshop.png"));
+  units.set("cigarfactory", loadImage("images/cigarfactory.png"));
+  units.set("armory", loadImage("images/armory.png"));
+  units.set("magazine", loadImage("images/magazine.png"));
+  units.set("arsenal", loadImage("images/arsenal.png"));
+  units.set("ironworks", loadImage("images/ironworks.png"));
+  units.set("blacksmithsshop", loadImage("images/blacksmithsshop.png"));
+  units.set("blacksmithshouse", loadImage("images/blacksmithshouse.png"));
+  units.set("rumfactory", loadImage("images/rumfactory.png"));
+  units.set("distillersshop", loadImage("images/distillersshop.png"));
+  units.set("distillershouse", loadImage("images/distillershouse.png"));
+  units.set("furfactory", loadImage("images/furfactory.png"));
+  units.set("furtradersshop", loadImage("images/furtradersshop.png"));
+  units.set("furtradershouse", loadImage("images/furtradershouse.png"));
+  units.set("textilemill", loadImage("images/textilemill.png"));
+  units.set("weaversshop", loadImage("images/weaversshop.png"));
+  units.set("weavershouse", loadImage("images/weavershouse.png"));
+  units.set("shipyard", loadImage("images/shipyard.png"));
+  units.set("drydock", loadImage("images/drydock.png"));
+  units.set("docks", loadImage("images/docks.png"));
+  units.set("newspaper", loadImage("images/newspaper.png"));
+  units.set("press", loadImage("images/press.png"));
+  units.set("customhouse", loadImage("images/customhouse.png"));
+  units.set("university", loadImage("images/university.png"));
+  units.set("college", loadImage("images/college.png"));
+  units.set("schoolhouse", loadImage("images/schoolhouse.png"));
+  units.set("warehouse", loadImage("images/warehouse.png"));
+  units.set("warehouse2", loadImage("images/warehouse2.png"));
+  units.set("stable", loadImage("images/stable.png"));
+  units.set("warehousestable", loadImage("images/warehousestable.png"));
+  units.set("warehouse2stable", loadImage("images/warehouse2stable.png"));
+  units.set("townhall", loadImage("images/townhall.png"));
 }
 
 function setup() {
+  console.log('building interface');
   createCanvas(1856, 2304 + topnav);
   let load_save = createFileInput(loadFileBytes, false);
   load_save.position(0, 0);
@@ -307,9 +532,78 @@ function setup() {
   pacific_check = createCheckbox("Pacific", false);
   pacific_check.position(835, 25);
   pacific_check.mouseClicked(pacificmode);
+  noLoop();
+  redraw();
+}
 
-  frameRate(0);
-  draw();
+function create_colony_controls() {
+  mapview = createButton("Return to Map");
+  mapview.position(700, topnav);
+  mapview.mouseClicked(setmapview);
+  powerselect = createSelect();
+  powerselect.position(700, topnav + 30);
+  for (let [num, name] of ["English","French","Spanish","Dutch"].entries()){
+    powerselect.option(name, num);
+  }
+  powerselect.mouseClicked(selectpower);
+
+  colonyselect = createSelect();
+  colonyselect.position(700, topnav + 60);
+  for (let i = 0; i < colonies.length; i++) {
+    colonyselect.option(colonies[i].name, i)
+  }
+  colonyselect.mouseClicked(draw);
+
+  let vert = topnav + 390;
+  let horiz = 30;
+  console.log(buildingtext);
+  console.log(buildinggroups);
+  for (const [name, opts] of buildinggroups.entries()) {
+    let radGroup = createRadio();
+    opts.forEach((opt) => opt ? radGroup.option(opt, buildingtext.get(opt)) : radGroup.option("(None)"));
+    if (vert > topnav + 610) {
+      vert = topnav + 390;
+      horiz += 400;
+    }
+    radGroup.position(horiz, vert += 30);
+    radGroup.mouseClicked(colonybuildings);
+    colony_controls.set(name, radGroup);
+  }
+
+  colony_controls.set("mapview", mapview);
+  colony_controls.set("colonyselect", colonyselect);
+  colony_controls.set("powerselect", powerselect);
+}
+
+function remove_colony_controls() {
+  console.log('Removing controlset for colony view');
+  for (const [name, elem] of colony_controls.entries()) {
+    p5.Element.prototype.remove.call(elem);
+    colony_controls.delete(name);
+  }
+}
+
+function selectpower() {
+  console.log("building colony list");
+  ctl = colony_controls.get("colonyselect");
+  pwr = colony_controls.get("powerselect").value();
+  console.log(ctl.elt.length);
+  while (ctl.elt.length) {
+    ctl.elt.remove(0);
+  }
+  for (let i = 0; i < game.num_colonies; i++) {
+    if (colonies[i].power == pwr) {
+      ctl.option(colonies[i].name, i);
+    }
+  }
+  redraw();
+}
+
+function setmapview(event) {
+  view = "map";
+  remove_colony_controls();
+  resizeCanvas(1856, 2304 + topnav);
+  event.stopPropagation();
 }
 
 function filesave() {
@@ -346,6 +640,18 @@ function filesave() {
     }
   }
 
+  for (let i = 0; i < game.num_colonies; i++) {
+    if (colonies[i].modified) {
+      console.log(`Updating ${colonies[i].name}`);
+      let address = game.colstart + i * 202;
+      let bldgs = colonies[i].buildingbytes;
+      for (let j = 0; j < bldgs.length; j++) {
+        game.bytes[address + 0x84 + j] = bldgs[j];
+      }
+
+    }
+  }
+
   game.bytes[game.tmapstart + 4 * game.mapsize + 0x264] = game.offsetbyte;
   console.log(`Modified ${modcount} tiles`);
   console.log(`Setting prime: ${game.prime}, rumors: ${game.lcr}`);
@@ -372,23 +678,31 @@ var saveByteArray = (function () {
 })();
 
 function draw() {
+
   background("#b2a1e5");
-  textSize(16);
-  fill(255);
-  textAlign(LEFT, BOTTOM);
-  if (region_check.checked()) {
-    text("Click: Increment  --  Ctrl+Click: Decrement", 10, topnav - 5);
-  } else if (pacific_check.checked()) {
-    text("Click: Toggle", 10, topnav - 5);
+  if (view == "colony") {
+    if (game != null) {
+      drawColony();
+    }
   } else {
-    text(
-      "Click: Paint Tile  --  Ctrl+Click: Toggle Plow  --  Shift+Click: Toggle Road  --  Ctrl+Right/Left/Up/Down: +/- Prime/Rumors  --  Ctrl+Shift+Click: Deplete Prime/Downgrade Colony",
-      10,
-      topnav - 5
-    );
-  }
-  if (game != null) {
-    drawMap();
+
+    textSize(16);
+    fill(255);
+    textAlign(LEFT, BOTTOM);
+    if (region_check.checked()) {
+      text("Click: Increment  --  Ctrl+Click: Decrement", 10, topnav - 5);
+    } else if (pacific_check.checked()) {
+      text("Click: Toggle", 10, topnav - 5);
+    } else {
+      text(
+        "Click: Paint Tile  --  Ctrl+Click: Toggle Plow  --  Shift+Click: Toggle Road  --  Ctrl+Right/Left/Up/Down: +/- Prime/Rumors  --  Ctrl+Shift+Click: Deplete Prime/Downgrade Colony",
+        10,
+        topnav - 5
+      );
+    }
+    if (game != null) {
+      drawMap();
+    }
   }
 }
 
@@ -409,91 +723,93 @@ function updatebox() {
 }
 
 function mouseClicked(event) {
-  // Code to run that uses the event.
-  if (event.pageY <= topnav) {
-    return;
-  }
-  if (game == null) {
-    return;
-  }
-  let row = Math.floor((event.pageY - topnav) / 32);
-  let col = Math.floor(event.pageX / 32);
-  click_tile = mapgrid[row][col];
-  if (region_check.checked()) {
-    if (event.ctrlKey) {
-      click_tile.pathregion += 15;
-    } else {
-      click_tile.pathregion += 1;
+  console.log(`Click at ${event.pageX}, ${event.pageY}`);
+  if (view == "map") {
+    if (event.pageY <= topnav) {
+      return;
     }
-    click_tile.pathregion %= 16;
-    click_tile.modified = true;
-    draw();
-    return;
-  }
-  if (pacific_check.checked()) {
-    if (click_tile.iswater) {
-      click_tile.pacific = !click_tile.pacific;
-      click_tile.modified = true;
-      draw();
+    if (game == null) {
+      return;
     }
-    return;
-  }
-  if (event.shiftKey && event.ctrlKey) {
-    if (click_tile.colony) {
+    let row = Math.floor((event.pageY - topnav - 8) / 32); // subtract 8 for rendering bug that adds buffer
+    let col = Math.floor((event.pageX - 8) / 32);
+    click_tile = mapgrid[row][col];
+    if (click_tile.colony && colony_check.checked()) {
       for (let i = 0; i < game.num_colonies; i++) {
         if (
           col == game.bytes[game.colstart + i * 202] &&
-          row == game.bytes[game.colstart + i * 202 + 1] &&
-          game.bytes[game.colstart + i * 202 + 0x84] & 0x7
+          row == game.bytes[game.colstart + i * 202 + 1]
         ) {
-          if (confirm("Are you sure you want to remove the fortifications?")) {
-            game.bytes[game.colstart + i * 202 + 0x84] =
-              game.bytes[game.colstart + i * 202 + 0x84] & 0xf8;
-            mapgrid[row][col].colony =
-              mapgrid[row][col].colony.substring(0, 1) + "colony";
-            draw();
-          }
+          view = "colony";
+          create_colony_controls();
+          console.log(`Clicked on ${colonies[i].power} colony of ${colonies[i].name}`);
+          colony_controls.get("powerselect").selected(colonies[i].power);
+          selectpower();
+          colony_controls.get("colonyselect").selected(i);
+          resizeCanvas(975, 750);
+          break;
         }
       }
-    } else {
+      return;
+    }
+    if (region_check.checked()) {
+      if (event.ctrlKey) {
+        click_tile.pathregion += 15;
+      } else {
+        click_tile.pathregion += 1;
+      }
+      click_tile.pathregion %= 16;
+      click_tile.modified = true;
+      redraw();
+      return;
+    }
+    if (pacific_check.checked()) {
+      if (click_tile.iswater) {
+        click_tile.pacific = !click_tile.pacific;
+        click_tile.modified = true;
+        redraw();
+      }
+      return;
+    }
+    if (event.shiftKey && event.ctrlKey) {
       click_tile.depleted = !click_tile.depleted;
       click_tile.modified = true;
-      draw();
+      redraw();
+      return;
     }
-    return;
-  }
 
-  if (event.shiftKey) {
-    if (!click_tile.iswater) {
-      click_tile.road = !click_tile.road;
-      click_tile.modified = true;
-      draw();
+    if (event.shiftKey) {
+      if (!click_tile.iswater) {
+        click_tile.road = !click_tile.road;
+        click_tile.modified = true;
+        redraw();
+      }
+      return;
     }
-    return;
-  }
 
-  if (event.ctrlKey) {
-    //toggle plow
-    if (!click_tile.iswater && !click_tile.hills) {
-      click_tile.plowed = !click_tile.plowed;
-      click_tile.forested = false;
-      click_tile.modified = true;
-      draw();
+    if (event.ctrlKey) {
+      //toggle plow
+      if (!click_tile.iswater && !click_tile.hills) {
+        click_tile.plowed = !click_tile.plowed;
+        click_tile.forested = false;
+        click_tile.modified = true;
+        redraw();
+      }
+      return;
     }
-    return;
-  }
 
-  newterr = int(terrain_select.value()) + int(feature_select.value());
-  console.log(newterr);
-  click_tile.update(newterr);
-  if (click_tile.iswater) {
-    click_tile.road = false;
-    click_tile.plowed = false;
+    newterr = int(terrain_select.value()) + int(feature_select.value());
+    console.log(newterr);
+    click_tile.update(newterr);
+    if (click_tile.iswater) {
+      click_tile.road = false;
+      click_tile.plowed = false;
+    }
+    if (click_tile.forested) {
+      click_tile.plowed = false;
+    }
+    redraw();
   }
-  if (click_tile.forested) {
-    click_tile.plowed = false;
-  }
-  draw();
 }
 
 function loadFileBytes(file) {
@@ -511,6 +827,7 @@ function fileread(data, filename) {
   game = new Gamestate(data.bytes);
   game.name = filename;
   mapgrid = [];
+  colonies = [];
   for (let row = 0; row < game.mapheight; row++) {
     let tilerow = [];
     for (let col = 0; col < game.mapwidth; col++) {
@@ -543,11 +860,15 @@ function fileread(data, filename) {
   const structure = ["colony", "stockade", "", "fort", "", "", "", "fortress"];
   for (let i = 0; i < game.num_colonies; i++) {
     // code to mark colonies in mapgrid
-    col = game.bytes[game.colstart + i * 202];
-    row = game.bytes[game.colstart + i * 202 + 1];
+
+    let address = game.colstart + i * 202;
+    col = game.bytes[address];
+    row = game.bytes[address + 1];
     mapgrid[row][col].colony =
-      powers[game.bytes[game.colstart + i * 202 + 0x1a]] +
-      structure[game.bytes[game.colstart + i * 202 + 0x84] & 0x7];
+      powers[game.bytes[address + 0x1a]] +
+      structure[game.bytes[address + 0x84] & 0x7];
+    console.log('pushing new colony');
+    colonies.push(new Colony(game.bytes.slice(address, address + 202)));
   }
 
   const tribes = [
@@ -568,7 +889,260 @@ function fileread(data, filename) {
     mapgrid[row][col].village =
       tribes[game.bytes[game.vilstart + i * 18 + 2] - 4];
   }
-  draw();
+  redraw();
+}
+
+function colonybuildings() {
+  console.log("adjust colony options");
+  curr_colony = colonies[int(colony_controls.get("colonyselect").selected())];
+  curr_colony.modified = true;
+
+  for (const [grp, bldgs] of buildinggroups.entries()) {
+    val = colony_controls.get(grp).value();
+    remainder = false;
+    for (let i = bldgs.length - 1; i >= 0; i--) {
+      if (bldgs[i] != null && val == bldgs[i]) {
+        curr_colony[bldgs[i]] = true;
+        remainder = true;
+      } else {
+        curr_colony[bldgs[i]] = remainder;
+      }
+    }
+  }
+  const powers = ["e", "f", "s", "d"];
+  const structure = ["colony", "stockade", "", "fort", "", "", "", "fortress"];
+  mapgrid[curr_colony.row][curr_colony.col].colony =
+    powers[curr_colony.power] + structure[curr_colony.fortress * 4 +
+    curr_colony.fort * 2 + curr_colony.stockade * 1];
+  console.log("Update fortification", curr_colony.row, curr_colony.col, mapgrid[curr_colony.row][curr_colony.col].colony);
+  console.log("Building flags: ", curr_colony.buildingbytes);
+  redraw();
+}
+
+function drawColony() {
+  const goods = ["Food", "Sugar", "Tobacco", "Cotton", "Furs", "Lumber", "Ore", "Silver", "Horses", "Rum", "Cigars", "Cloth", "Coats", "Trade Goods", "Tools", "Muskets"];
+  console.log('draw colony');
+  curr_colony = colonies[int(colony_controls.get("colonyselect").selected())];
+  image(units.get("colonyscreen"), 0, topnav);
+  for (let i = 0; i < curr_colony.cargo.length; i++) {
+    if (curr_colony.cargo[i] > 999) {
+      image(units.get(Math.floor(curr_colony.cargo[i] / 1000)), i * 38 + 6, topnav + 388);
+      image(units.get(Math.floor(curr_colony.cargo[i] / 100) % 10), i * 38 + 14, topnav + 388);
+      image(units.get(Math.floor(curr_colony.cargo[i] / 10) % 10), i * 38 + 22, topnav + 388);
+      image(units.get(curr_colony.cargo[i] % 10), i * 38 + 30, topnav + 388);
+    } else if (curr_colony.cargo[i] > 99) {
+      image(units.get(Math.floor(curr_colony.cargo[i] / 100)), i * 38 + 10, topnav + 388);
+      image(units.get(Math.floor(curr_colony.cargo[i] / 10) % 10), i * 38 + 18, topnav + 388);
+      image(units.get(curr_colony.cargo[i] % 10), i * 38 + 26, topnav + 388);
+    } else if (curr_colony.cargo[i] > 9) {
+      image(units.get(Math.floor(curr_colony.cargo[i] / 10)), i * 38 + 14, topnav + 388);
+      image(units.get(curr_colony.cargo[i] % 10), i * 38 + 22, topnav + 388);
+    } else {
+      image(units.get(curr_colony.cargo[i]), i * 38 + 18, topnav + 388);
+    }
+  }
+
+  // map at 448, 64 (tiles 48x48)
+  for (let r = -1; r < 2; r++) {
+    for (let c = -1; c < 2; c++) {
+      tile = mapgrid[curr_colony.row + r][curr_colony.col + c];
+      image(bigbasetiles.get(tile.base), 496 + c * 48, topnav + 112 + r * 48);
+      if (tile.forested) {
+        image(bigbasetiles.get(8), 496 + c * 48, topnav + 112 + r * 48);
+      }
+    }
+  }
+
+  console.log("TODO: if no Adam Smith, disable: Iron Works, Magazine, and 4 goods factories");
+  console.log("TODO: if no ocean, disable drydock, shipyard");
+  console.log("TODO: if no water, disable docks");
+
+  // fortification at 246, 212
+  if (curr_colony.fortress) {
+    image(units.get("fortress"), 246, topnav + 212);
+    colony_controls.get("fortification").selected("fortress");
+  } else if (curr_colony.fort) {
+    image(units.get("fort"), 246, topnav + 212);
+    colony_controls.get("fortification").selected("fort");
+  } else if (curr_colony.stockade) {
+    image(units.get("stockade"), 246, topnav + 212);
+    colony_controls.get("fortification").selected("stockade");
+  } else {
+    colony_controls.get("fortification").selected("(None)");
+  }
+
+  // carpenter at 20, 152
+  if (curr_colony.lumbermill) {
+    image(units.get("lumbermill"), 20, topnav + 152);
+    colony_controls.get("carpentersshop").selected("lumbermill");
+  } else {
+    image(units.get("carpentersshop"), 20, topnav + 152);
+    colony_controls.get("carpentersshop").selected("carpentersshop");
+  }
+
+  // church 106, 74
+  if (curr_colony.cathedral) {
+    image(units.get("cathedral"), 174, topnav + 22);
+    colony_controls.get("church").selected("cathedral");
+  } else if (curr_colony.church) {
+    image(units.get("church"), 174, topnav + 22);
+    colony_controls.get("church").selected("church");
+  } else {
+    colony_controls.get("church").selected("(None)");
+  }
+
+
+  // tobacco at 112, 26
+  if (curr_colony.cigarfactory) {
+    image(units.get("cigarfactory"), 112, topnav + 26);
+    colony_controls.get("tobacco").selected("cigarfactory");
+  } else if (curr_colony.tobacconistsshop) {
+    image(units.get("tobacconistsshop"), 112, topnav + 26);
+    colony_controls.get("tobacco").selected("tobacconistsshop");
+  } else {
+    image(units.get("tobacconistshouse"), 112, topnav + 26);
+    colony_controls.get("tobacco").selected("tobacconistshouse");
+  }
+
+  // armory 30, 204
+  if (curr_colony.arsenal) {
+    image(units.get("arsenal"), 30, topnav + 204);
+    colony_controls.get("armory").selected("arsenal");
+  } else if (curr_colony.magazine) {
+    image(units.get("magazine"), 30, topnav + 204);
+    colony_controls.get("armory").selected("magazine");
+  } else if (curr_colony.armory) {
+    image(units.get("armory"), 30, topnav + 204);
+    colony_controls.get("armory").selected("armory");
+  } else {
+    colony_controls.get("armory").selected("(None)");
+  }
+
+  // blacksmith 134, 108
+  if (curr_colony.ironworks) {
+    image(units.get("ironworks"), 134, topnav + 108);
+    colony_controls.get("blacksmith").selected("ironworks");
+  } else if (curr_colony.blacksmithsshop) {
+    image(units.get("blacksmithsshop"), 134, topnav + 108);
+    colony_controls.get("blacksmith").selected("blacksmithsshop");
+  } else {
+    image(units.get("blacksmithshouse"), 134, topnav + 108);
+    colony_controls.get("blacksmith").selected("blacksmithshouse");
+  }
+
+  // warehouse stable 12, 28
+  if (curr_colony.warehouseexpansion && curr_colony.stable) {
+    image(units.get("warehouse2stable"), 12, topnav + 28);
+    colony_controls.get("warehouse").selected("warehouseexpansion");
+    colony_controls.get("stable").selected("stable");
+  } else if (curr_colony.warehouse && curr_colony.stable) {
+    image(units.get("warehousestable"), 12, topnav + 28);
+    colony_controls.get("warehouse").selected("warehouse");
+    colony_controls.get("stable").selected("stable");
+  } else if (curr_colony.stable) {
+    image(units.get("stable"), 12, topnav + 28);
+    colony_controls.get("warehouse").selected("(None)");
+    colony_controls.get("stable").selected("stable");
+  } else if (curr_colony.warehouseexpansion) {
+    image(units.get("warehouse2"), 12, topnav + 28);
+    colony_controls.get("warehouse").selected("warehouseexpansion");
+    colony_controls.get("stable").selected("(None)");
+  } else if (curr_colony.warehouse) {
+    image(units.get("warehouse"), 12, topnav + 28);
+    colony_controls.get("warehouse").selected("warehouse");
+    colony_controls.get("stable").selected("(None)");
+  } else {
+    colony_controls.get("warehouse").selected("(None)");
+    colony_controls.get("stable").selected("(None)");
+  }
+
+  // rum 192, 106
+  if (curr_colony.rumfactory) {
+    image(units.get("rumfactory"), 192, topnav + 106);
+    colony_controls.get("rum").selected("rumfactory");
+  } else if (curr_colony.distillersshop) {
+    image(units.get("distillersshop"), 192, topnav + 106);
+    colony_controls.get("rum").selected("distillersshop");
+  } else {
+    image(units.get("distillershouse"), 192, topnav + 106);
+    colony_controls.get("rum").selected("distillershouse");
+  }
+
+  // fur  74, 90
+  if (curr_colony.furfactory) {
+    image(units.get("furfactory"), 74, topnav + 90);
+    colony_controls.get("fur").selected("furfactory");
+  } else if (curr_colony.furtradersshop) {
+    image(units.get("furtradersshop"), 74, topnav + 90);
+    colony_controls.get("fur").selected("furtradersshop");
+  } else {
+    image(units.get("furtradershouse"), 74, topnav + 90);
+    colony_controls.get("fur").selected("furtradershouse");
+  }
+
+  // cotton 290, 30
+  if (curr_colony.textilemill) {
+    image(units.get("textilemill"), 290, topnav + 30);
+    colony_controls.get("cotton").selected("textilemill");
+  } else if (curr_colony.weaversshop) {
+    image(units.get("weaversshop"), 290, topnav + 30);
+    colony_controls.get("cotton").selected("weaversshop");
+  } else {
+    image(units.get("weavershouse"), 290, topnav + 30);
+    colony_controls.get("cotton").selected("weavershouse");
+  }
+
+  // docks  248, 110
+  if (curr_colony.shipyard) {
+    image(units.get("shipyard"), 248, topnav + 110);
+    colony_controls.get("docks").selected("shipyard");
+  } else if (curr_colony.drydock) {
+    image(units.get("drydock"), 248, topnav + 110);
+    colony_controls.get("docks").selected("drydock");
+  } else if (curr_colony.docks) {
+    image(units.get("docks"), 248, topnav + 110);
+    colony_controls.get("docks").selected("docks");
+  } else {
+    colony_controls.get("docks").selected("(None)");
+  }
+
+  // printing press  346, 36
+  if (curr_colony.newspaper) {
+    image(units.get("newspaper"), 346, topnav + 36);
+    colony_controls.get("press").selected("newspaper");
+  } else if (curr_colony.press) {
+    image(units.get("press"), 346, topnav + 36);
+    colony_controls.get("press").selected("press");
+  } else {
+    colony_controls.get("press").selected("(None)");
+  }
+
+  // school  256, 106
+  if (curr_colony.university) {
+    image(units.get("university"), 256, topnav + 106);
+    colony_controls.get("schoolhouse").selected("university");
+  } else if (curr_colony.college) {
+    image(units.get("college"), 256, topnav + 106);
+    colony_controls.get("schoolhouse").selected("college");
+  } else if (curr_colony.schoolhouse) {
+    image(units.get("schoolhouse"), 256, topnav + 106);
+    colony_controls.get("schoolhouse").selected("schoolhouse");
+  } else {
+    colony_controls.get("schoolhouse").selected("(None)");
+  }
+
+  // custom house  16, 82
+  if (curr_colony.customhouse) {
+    image(units.get("customhouse"), 16, topnav + 82);
+    colony_controls.get("customhouse").selected("customhouse");
+  } else {
+    colony_controls.get("customhouse").selected("(None)");
+  }
+
+  // townhall  132, 174
+  if (curr_colony.townhall) {
+    image(units.get("townhall"), 132, topnav + 174);
+  }
 }
 
 function drawMap() {
@@ -642,24 +1216,24 @@ function drawMap() {
           .get(row % 4)
           .includes(
             (col + 64 * game.lcr + 68 * game.prime + Math.floor(row / 4) * 12) %
-              128
+            128
           )
       ) {
         sprite(
           primetiles.get(-5),
           !curr_tile.iswater &&
-            lcr_check.checked() &&
-            0 < row &&
-            row < game.mapheight - 1 &&
-            curr_tile.explorer == 0x0f
+          lcr_check.checked() &&
+          0 < row &&
+          row < game.mapheight - 1 &&
+          curr_tile.explorer == 0x0f
         );
         sprite(
           primetiles.get(-6),
           !curr_tile.iswater &&
-            lcr_check.checked() &&
-            0 < row &&
-            row < game.mapheight - 1 &&
-            curr_tile.explorer != 0x0f
+          lcr_check.checked() &&
+          0 < row &&
+          row < game.mapheight - 1 &&
+          curr_tile.explorer != 0x0f
         );
       }
       // road
@@ -700,20 +1274,20 @@ function keyPressed() {
     game.prime += 15;
     game.prime %= 16;
     offshorefish();
-    draw();
+    redraw();
   } else if (keyCode === RIGHT_ARROW && keyIsDown(CONTROL) && game != null) {
     game.prime += 1;
     game.prime %= 16;
     offshorefish();
-    draw();
+    redraw();
   } else if (keyCode === UP_ARROW && keyIsDown(CONTROL) && game != null) {
     game.lcr += 1;
     game.lcr %= 16;
-    draw();
+    redraw();
   } else if (keyCode === DOWN_ARROW && keyIsDown(CONTROL) && game != null) {
     game.lcr += 15;
     game.lcr %= 16;
-    draw();
+    redraw();
   }
 }
 
@@ -730,7 +1304,7 @@ function undeplete() {
       }
     }
   }
-  draw();
+  redraw();
 }
 
 function gossip() {
@@ -745,7 +1319,7 @@ function gossip() {
           .get(row % 4)
           .includes(
             (col + 64 * game.lcr + 68 * game.prime + Math.floor(row / 4) * 12) %
-              128
+            128
           ) &&
         !curr_tile.iswater &&
         mapgrid[row][col].explorer != 0x0f
@@ -755,7 +1329,7 @@ function gossip() {
       }
     }
   }
-  draw();
+  redraw();
 }
 
 function offshorefish() {
@@ -826,7 +1400,7 @@ function regionmode() {
     terrain_select.enable();
     feature_select.enable();
   }
-  draw();
+  redraw();
 }
 
 function pacificmode() {
@@ -852,7 +1426,7 @@ function pacificmode() {
     terrain_select.enable();
     feature_select.enable();
   }
-  draw();
+  redraw();
 }
 
 function Export() {
@@ -900,10 +1474,8 @@ function regioncheck() {
   }
   function updateparent(tile1, tile2) {
     if (!(getroot(tile1) === getroot(tile2))) {
-      //console.log('different roots, update');
       getroot(tile2).parent = getroot(tile1);
     }
-    //console.log('same roots, do nothing');
   }
   // reset all parents to null
   // check that boundary and only boundary are region 0
@@ -971,8 +1543,7 @@ function regioncheck() {
         regions[i].pathregion == regions[j].pathregion
       ) {
         console.log(
-          `${regions[i].iswater ? "Water" : "Land"} region ${
-            regions[i].pathregion
+          `${regions[i].iswater ? "Water" : "Land"} region ${regions[i].pathregion
           } is disjoint`
         );
         return false;
