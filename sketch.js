@@ -889,7 +889,7 @@ function fileread(data, filename) {
     mapgrid[row][col].village =
       tribes[game.bytes[game.vilstart + i * 18 + 2] - 4];
   }
-  redraw();
+  setmapview();
 }
 
 function colonybuildings() {
