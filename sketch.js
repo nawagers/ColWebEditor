@@ -256,9 +256,7 @@ class Colony {
     //16 unused bytes
 
     // built structures
-    console.log(buildingbits);
     for (const [name, [byte, bit]] of buildingbits.entries()) {
-      console.log(name, byte, bit);
       this[name] = Boolean(bytes[byte] & bit);
     }
 
@@ -603,7 +601,9 @@ function setmapview(event) {
   view = "map";
   remove_colony_controls();
   resizeCanvas(1856, 2304 + topnav);
-  event.stopPropagation();
+  if (event){
+    event.stopPropagation();
+  }
 }
 
 function filesave() {
@@ -1535,6 +1535,7 @@ function regioncheck() {
 
   regions = regions.filter((reg) => reg.parent == null);
   console.log(`Found ${regions.length} disjoint regions`);
+  regions = regions.filter((reg) => reg.pathregion != 15);
   for (let i = 0; i < regions.length - 1; i++) {
     for (let j = i + 1; j < regions.length; j++) {
       //console.log(`Comparing region ${i} to ${j}`);
