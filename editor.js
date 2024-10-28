@@ -130,6 +130,14 @@ function preload() {
   units.set("agrarian", loadImage("images/agrarian.png"));
   units.set("semi-nomadic", loadImage("images/semi-nomadic.png"));
   units.set("civilized", loadImage("images/civilized.png"));
+  units.set("trained", loadImage("images/trained.png"));
+  units.set("scouted", loadImage("images/scouted.png"));
+  units.set("capital", loadImage("images/capital.png"));
+  units.set("emission", loadImage("images/emission.png"));
+  units.set("fmission", loadImage("images/fmission.png"));
+  units.set("smission", loadImage("images/smission.png"));
+  units.set("dmission", loadImage("images/dmission.png"));
+
   units.set("colonyscreen", loadImage("images/colonyscreen.png"));
   for (let i = 0; i < 10; i++) {
     units.set(i, loadImage(`images/${i}.png`));
@@ -604,6 +612,18 @@ function fileread(data, filename) {
 
     mapgrid[row][col].village =
       tribes[game.bytes[game.vilstart + i * 18 + 2] - 4];
+    mapgrid[row][col].trained =
+      Boolean(game.bytes[game.vilstart + i * 18 + 3] & 0x02);
+    mapgrid[row][col].capital =
+      Boolean(game.bytes[game.vilstart + i * 18 + 3] & 0x04);
+    mapgrid[row][col].scouted =
+      Boolean(game.bytes[game.vilstart + i * 18 + 3] & 0x08);
+
+    if (game.bytes[game.vilstart + i * 18 + 5] != 0xFF) {
+      mapgrid[row][col].mission = ["e", "f", "s", "d"][game.bytes[game.vilstart + i * 18 + 5] & 0x03] + "mission";
+    }
+
+    console.log(`Tribe ${row} ${col} ${game.bytes[game.vilstart + i * 18 + 3]} ${game.bytes[game.vilstart + i * 18 + 5]} ${game.bytes[game.vilstart + i * 18 + 6]} ${game.bytes[game.vilstart + i * 18 + 7]}`);
   }
   setmapview();
 }
@@ -749,7 +769,7 @@ function drawColony() {
     ["armory", "arsenal", smith],
     ["customhouse", "customhouse", stuyvesant]
   ]
- enableconditions.forEach((elem) => { enableopt(colony_controls, ...elem) });
+  enableconditions.forEach((elem) => { enableopt(colony_controls, ...elem) });
 
 }
 
@@ -864,6 +884,22 @@ function drawMap() {
       colsprite(
         units.get(curr_tile.village),
         curr_tile.village != null && village_check.checked()
+      );
+      colsprite(
+        units.get("scouted"),
+        curr_tile.scouted && village_check.checked()
+      );
+      colsprite(
+        units.get("capital"),
+        curr_tile.capital && village_check.checked()
+      );
+      colsprite(
+        units.get("trained"),
+        curr_tile.trained && village_check.checked()
+      );
+      colsprite(
+        units.get(curr_tile.mission),
+        curr_tile.mission != null && village_check.checked()
       );
       if (region_check.checked()) {
         textAlign(CENTER, CENTER);

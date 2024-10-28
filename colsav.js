@@ -35,6 +35,10 @@ class Tile {
         // computed game state
         this.colony = null;
         this.village = null;
+        this.scouted = false;
+        this.trained = false;
+        this.capital = false;
+        this.mission = null;
         this.modified = false;
         this.parent = null;
     }
