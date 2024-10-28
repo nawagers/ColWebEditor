@@ -196,6 +196,9 @@ class Gamestate {
     get colstart() {
         return 0x186;
     }
+    get powerstart(){
+        return 0xca * this.num_colonies + 0x1c * this.num_units + 0x186;
+    }
     get vilstart() {
         return 0xca * this.num_colonies + 0x1c * this.num_units + 0x676;
     }
@@ -240,8 +243,8 @@ const BUILDINGS = new Map([
     ["furfactory", new Building("furfactory", "Fur Factory", 0x88, 0x04, [74, 90], [46, 54], [16, 26], 6)],
     ["carpentersshop", new Building("carpentersshop", "Carpenter's Shop", 0x88, 0x08, [20, 152], [88, 44], [54, 18], 10)],
     ["lumbermill", new Building("lumbermill", "Lumber Mill", 0x88, 0x10, [20, 152], [88, 44], [54, 18], 10)],
-    ["church", new Building("church", "Church", 0x88, 0x20, [106, 74], [106, 74], [70, 46], 16)],
-    ["cathedral", new Building("cathedral", "Cathedral", 0x88, 0x40, [106, 74], [106, 74], [70, 46], 16)],
+    ["church", new Building("church", "Church", 0x88, 0x20, [174, 22], [106, 74], [70, 46], 16)],
+    ["cathedral", new Building("cathedral", "Cathedral", 0x88, 0x40, [174, 22], [106, 74], [70, 46], 16)],
     ["blacksmithshouse", new Building("blacksmithshouse", "Blacksmith's House", 0x88, 0x80, [134, 108], [46, 54], [16, 26], 6)],
     ["blacksmithsshop", new Building("blacksmithsshop", "Blacksmith's Shop", 0x89, 0x01, [134, 108], [46, 54], [16, 26], 6)],
     ["ironworks", new Building("ironworks", "Iron Works", 0x89, 0x02, [134, 108], [46, 54], [16, 26], 6)]
@@ -262,5 +265,6 @@ const BUILDINGGROUPS = new Map([
     ["fur", ["furtradershouse", "furtradersshop", "furfactory"]],
     ["cotton", ["weavershouse", "weaversshop", "textilemill"]],
     ["rum", ["distillershouse", "distillersshop", "rumfactory"]],
-    ["tobacco", ["tobacconistshouse", "tobacconistsshop", "cigarfactory"]]
+    ["tobacco", ["tobacconistshouse", "tobacconistsshop", "cigarfactory"]],
+    ["townhall", ["townhall"]]
 ]);

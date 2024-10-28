@@ -256,7 +256,7 @@ function create_colony_controls() {
   mapview.mouseClicked(setmapview);
   powerselect = createSelect();
   powerselect.position(700, topnav + 30);
-  for (let [num, name] of ["English","French","Spanish","Dutch"].entries()){
+  for (let [num, name] of ["English", "French", "Spanish", "Dutch"].entries()) {
     powerselect.option(name, num);
   }
   powerselect.mouseClicked(selectpower);
@@ -270,9 +270,10 @@ function create_colony_controls() {
 
   let vert = topnav + 390;
   let horiz = 30;
-  console.log(BUILDINGS);
-  console.log(BUILDINGGROUPS);
   for (const [name, opts] of BUILDINGGROUPS.entries()) {
+    if (opts.length < 2) {
+      continue; // no options, so skip
+    }
     let radGroup = createRadio();
     opts.forEach((opt) => opt ? radGroup.option(opt, BUILDINGS.get(opt).text) : radGroup.option("(None)"));
     if (vert > topnav + 610) {
@@ -301,7 +302,6 @@ function selectpower() {
   console.log("building colony list");
   ctl = colony_controls.get("colonyselect");
   pwr = colony_controls.get("powerselect").value();
-  console.log(ctl.elt.length);
   while (ctl.elt.length) {
     ctl.elt.remove(0);
   }
@@ -317,7 +317,7 @@ function setmapview(event) {
   view = "map";
   remove_colony_controls();
   resizeCanvas(1856, 2304 + topnav);
-  if (event){
+  if (event) {
     event.stopPropagation();
   }
 }
@@ -614,6 +614,9 @@ function colonybuildings() {
   curr_colony.modified = true;
 
   for (const [grp, bldgs] of BUILDINGGROUPS.entries()) {
+    if (!colony_controls.has(grp)) {
+      continue;  // no radio buttons for this grp
+    }
     val = colony_controls.get(grp).value();
     remainder = false;
     for (let i = bldgs.length - 1; i >= 0; i--) {
@@ -636,8 +639,19 @@ function colonybuildings() {
 }
 
 function drawColony() {
-  const goods = ["Food", "Sugar", "Tobacco", "Cotton", "Furs", "Lumber", "Ore", "Silver", "Horses", "Rum", "Cigars", "Cloth", "Coats", "Trade Goods", "Tools", "Muskets"];
   console.log('draw colony');
+
+  function enableopt(ctrl, bldg, level, condition) {
+    for (const option of ctrl.get(bldg)._getOptionsArray()) {
+      if (option.value === level) {
+        option.disabled = !condition;
+        return;
+      }
+    }
+  }
+
+  const goods = ["Food", "Sugar", "Tobacco", "Cotton", "Furs", "Lumber", "Ore", "Silver", "Horses", "Rum", "Cigars", "Cloth", "Coats", "Trade Goods", "Tools", "Muskets"];
+
   curr_colony = colonies[int(colony_controls.get("colonyselect").selected())];
   image(units.get("colonyscreen"), 0, topnav);
   for (let i = 0; i < curr_colony.cargo.length; i++) {
@@ -669,196 +683,74 @@ function drawColony() {
     }
   }
 
-  console.log("TODO: if no Adam Smith, disable: Iron Works, Magazine, and 4 goods factories");
-  console.log("TODO: if no ocean, disable drydock, shipyard");
-  console.log("TODO: if no water, disable docks");
+  for (const [grp, bldgs] of BUILDINGGROUPS.entries()) {
+    let type_built = false;
+    for (let i = bldgs.length - 1; i >= 0; i--) {
 
-  // fortification at 246, 212
-  if (curr_colony.fortress) {
-    image(units.get("fortress"), 246, topnav + 212);
-    colony_controls.get("fortification").selected("fortress");
-  } else if (curr_colony.fort) {
-    image(units.get("fort"), 246, topnav + 212);
-    colony_controls.get("fortification").selected("fort");
-  } else if (curr_colony.stockade) {
-    image(units.get("stockade"), 246, topnav + 212);
-    colony_controls.get("fortification").selected("stockade");
-  } else {
-    colony_controls.get("fortification").selected("(None)");
+      if (bldgs[i] != null && curr_colony[bldgs[i]]) {
+        if (!["stable", "warehouse"].includes(grp)) {  // combo graphics
+          image(units.get(bldgs[i]), BUILDINGS.get(bldgs[i]).x, topnav + BUILDINGS.get(bldgs[i]).y);
+        }
+        if (colony_controls.has(grp)) {
+          colony_controls.get(grp).selected(bldgs[i]);
+        }
+        type_built = true;
+        break;
+      }
+    }
+    if (!type_built) {
+      colony_controls.get(grp).selected("(None)");
+    }
   }
 
-  // carpenter at 20, 152
-  if (curr_colony.lumbermill) {
-    image(units.get("lumbermill"), 20, topnav + 152);
-    colony_controls.get("carpentersshop").selected("lumbermill");
-  } else {
-    image(units.get("carpentersshop"), 20, topnav + 152);
-    colony_controls.get("carpentersshop").selected("carpentersshop");
-  }
-
-  // church 106, 74
-  if (curr_colony.cathedral) {
-    image(units.get("cathedral"), 174, topnav + 22);
-    colony_controls.get("church").selected("cathedral");
-  } else if (curr_colony.church) {
-    image(units.get("church"), 174, topnav + 22);
-    colony_controls.get("church").selected("church");
-  } else {
-    colony_controls.get("church").selected("(None)");
-  }
-
-
-  // tobacco at 112, 26
-  if (curr_colony.cigarfactory) {
-    image(units.get("cigarfactory"), 112, topnav + 26);
-    colony_controls.get("tobacco").selected("cigarfactory");
-  } else if (curr_colony.tobacconistsshop) {
-    image(units.get("tobacconistsshop"), 112, topnav + 26);
-    colony_controls.get("tobacco").selected("tobacconistsshop");
-  } else {
-    image(units.get("tobacconistshouse"), 112, topnav + 26);
-    colony_controls.get("tobacco").selected("tobacconistshouse");
-  }
-
-  // armory 30, 204
-  if (curr_colony.arsenal) {
-    image(units.get("arsenal"), 30, topnav + 204);
-    colony_controls.get("armory").selected("arsenal");
-  } else if (curr_colony.magazine) {
-    image(units.get("magazine"), 30, topnav + 204);
-    colony_controls.get("armory").selected("magazine");
-  } else if (curr_colony.armory) {
-    image(units.get("armory"), 30, topnav + 204);
-    colony_controls.get("armory").selected("armory");
-  } else {
-    colony_controls.get("armory").selected("(None)");
-  }
-
-  // blacksmith 134, 108
-  if (curr_colony.ironworks) {
-    image(units.get("ironworks"), 134, topnav + 108);
-    colony_controls.get("blacksmith").selected("ironworks");
-  } else if (curr_colony.blacksmithsshop) {
-    image(units.get("blacksmithsshop"), 134, topnav + 108);
-    colony_controls.get("blacksmith").selected("blacksmithsshop");
-  } else {
-    image(units.get("blacksmithshouse"), 134, topnav + 108);
-    colony_controls.get("blacksmith").selected("blacksmithshouse");
-  }
-
-  // warehouse stable 12, 28
+  let combo = "";
   if (curr_colony.warehouseexpansion && curr_colony.stable) {
-    image(units.get("warehouse2stable"), 12, topnav + 28);
-    colony_controls.get("warehouse").selected("warehouseexpansion");
-    colony_controls.get("stable").selected("stable");
+    combo = "warehouse2stable";
   } else if (curr_colony.warehouse && curr_colony.stable) {
-    image(units.get("warehousestable"), 12, topnav + 28);
-    colony_controls.get("warehouse").selected("warehouse");
-    colony_controls.get("stable").selected("stable");
+    combo = "warehousestable";
   } else if (curr_colony.stable) {
-    image(units.get("stable"), 12, topnav + 28);
-    colony_controls.get("warehouse").selected("(None)");
-    colony_controls.get("stable").selected("stable");
+    combo = "stable";
   } else if (curr_colony.warehouseexpansion) {
-    image(units.get("warehouse2"), 12, topnav + 28);
-    colony_controls.get("warehouse").selected("warehouseexpansion");
-    colony_controls.get("stable").selected("(None)");
+    combo = "warehouse2";
   } else if (curr_colony.warehouse) {
-    image(units.get("warehouse"), 12, topnav + 28);
-    colony_controls.get("warehouse").selected("warehouse");
-    colony_controls.get("stable").selected("(None)");
-  } else {
-    colony_controls.get("warehouse").selected("(None)");
-    colony_controls.get("stable").selected("(None)");
+    combo = "warehouse";
+  }
+  if (combo) {
+    image(units.get(combo), BUILDINGS.get("warehouse").x, topnav + BUILDINGS.get("warehouse").y);
   }
 
-  // rum 192, 106
-  if (curr_colony.rumfactory) {
-    image(units.get("rumfactory"), 192, topnav + 106);
-    colony_controls.get("rum").selected("rumfactory");
-  } else if (curr_colony.distillersshop) {
-    image(units.get("distillersshop"), 192, topnav + 106);
-    colony_controls.get("rum").selected("distillersshop");
-  } else {
-    image(units.get("distillershouse"), 192, topnav + 106);
-    colony_controls.get("rum").selected("distillershouse");
+  surrounding = [[-1, -1], [-1, 0], [-1, 1], [0, 1], [1, 1], [1, 0], [1, -1], [0, -1]];
+  water = false;
+  ocean = false;
+  console.log('checking water tiles');
+  for ([row, col] of surrounding) {
+    if (mapgrid[curr_colony.row + row][curr_colony.col + col].iswater) {
+      water = true;
+      console.log(`water found at ${row}, ${col} with region ${mapgrid[curr_colony.row + row][curr_colony.col + col].pathregion}`);
+      if (mapgrid[curr_colony.row + row][curr_colony.col + col].pathregion == 1) {
+        ocean = true;
+        break;
+      }
+    }
   }
 
-  // fur  74, 90
-  if (curr_colony.furfactory) {
-    image(units.get("furfactory"), 74, topnav + 90);
-    colony_controls.get("fur").selected("furfactory");
-  } else if (curr_colony.furtradersshop) {
-    image(units.get("furtradersshop"), 74, topnav + 90);
-    colony_controls.get("fur").selected("furtradersshop");
-  } else {
-    image(units.get("furtradershouse"), 74, topnav + 90);
-    colony_controls.get("fur").selected("furtradershouse");
-  }
+  smith = Boolean(game.bytes[game.powerstart + curr_colony.power * 0x13C + 7] & 0x01);
+  stuyvesant = Boolean(game.bytes[game.powerstart + curr_colony.power * 0x13C + 7] & 0x08);
 
-  // cotton 290, 30
-  if (curr_colony.textilemill) {
-    image(units.get("textilemill"), 290, topnav + 30);
-    colony_controls.get("cotton").selected("textilemill");
-  } else if (curr_colony.weaversshop) {
-    image(units.get("weaversshop"), 290, topnav + 30);
-    colony_controls.get("cotton").selected("weaversshop");
-  } else {
-    image(units.get("weavershouse"), 290, topnav + 30);
-    colony_controls.get("cotton").selected("weavershouse");
-  }
+  enableconditions = [
+    ["docks", "shipyard", ocean],
+    ["docks", "drydock", ocean],
+    ["docks", "docks", water],
+    ["rum", "rumfactory", smith],
+    ["cotton", "textilemill", smith],
+    ["tobacco", "cigarfactory", smith],
+    ["fur", "furfactory", smith],
+    ["blacksmith", "ironworks", smith],
+    ["armory", "arsenal", smith],
+    ["customhouse", "customhouse", stuyvesant]
+  ]
+ enableconditions.forEach((elem) => { enableopt(colony_controls, ...elem) });
 
-  // docks  248, 110
-  if (curr_colony.shipyard) {
-    image(units.get("shipyard"), 248, topnav + 110);
-    colony_controls.get("docks").selected("shipyard");
-  } else if (curr_colony.drydock) {
-    image(units.get("drydock"), 248, topnav + 110);
-    colony_controls.get("docks").selected("drydock");
-  } else if (curr_colony.docks) {
-    image(units.get("docks"), 248, topnav + 110);
-    colony_controls.get("docks").selected("docks");
-  } else {
-    colony_controls.get("docks").selected("(None)");
-  }
-
-  // printing press  346, 36
-  if (curr_colony.newspaper) {
-    image(units.get("newspaper"), 346, topnav + 36);
-    colony_controls.get("press").selected("newspaper");
-  } else if (curr_colony.press) {
-    image(units.get("press"), 346, topnav + 36);
-    colony_controls.get("press").selected("press");
-  } else {
-    colony_controls.get("press").selected("(None)");
-  }
-
-  // school  256, 106
-  if (curr_colony.university) {
-    image(units.get("university"), 256, topnav + 106);
-    colony_controls.get("schoolhouse").selected("university");
-  } else if (curr_colony.college) {
-    image(units.get("college"), 256, topnav + 106);
-    colony_controls.get("schoolhouse").selected("college");
-  } else if (curr_colony.schoolhouse) {
-    image(units.get("schoolhouse"), 256, topnav + 106);
-    colony_controls.get("schoolhouse").selected("schoolhouse");
-  } else {
-    colony_controls.get("schoolhouse").selected("(None)");
-  }
-
-  // custom house  16, 82
-  if (curr_colony.customhouse) {
-    image(units.get("customhouse"), 16, topnav + 82);
-    colony_controls.get("customhouse").selected("customhouse");
-  } else {
-    colony_controls.get("customhouse").selected("(None)");
-  }
-
-  // townhall  132, 174
-  if (curr_colony.townhall) {
-    image(units.get("townhall"), 132, topnav + 174);
-  }
 }
 
 function drawMap() {
