@@ -10,252 +10,157 @@
 // Validate files using header
 // Add row/col numbers to border tiles
 
-let topnav = 70;
+let topnav = 100;
 const basetiles = new Map();
 const bigbasetiles = new Map();
 const primetiles = new Map();
 const units = new Map();
-let game = null;
-let mapgrid = [];
-let colonies = [];
-const primepattern = new Map([
-  [0, [0, 10, 17, 27, 34, 40, 51, 57]],
-  [1, [4, 14, 21, 31, 38, 44, 55, 61]],
-  [2, [2, 8, 19, 25, 32, 42, 49, 59]],
-  [3, [6, 12, 23, 29, 36, 46, 53, 63]],
-]);
-const rumorpattern = new Map([
-  [1, [36, 53, 70, 87]],
-  [2, [10, 27, 104, 121]],
-  [3, [44, 61, 78, 95]],
-  [0, [2, 19, 96, 113]],
-]);
 
-let terrain_select;
-let feature_select;
-let colony_check;
-let village_check;
-let prime_check;
-let lcr_check;
-let roads_check;
-let plow_check;
-let river_check;
-let region_check;
-let pacific_check;
-let view = "map";
+
+let game = null;
+
+let load_save;
+let toolbar;
+let view;
 let map_controls = new Map();
 let colony_controls = new Map();
 
 function preload() {
   console.log('Loading sprites');
-  basetiles.set(0, loadImage("images/tundra.png"));
-  basetiles.set(1, loadImage("images/desert.png"));
-  basetiles.set(2, loadImage("images/plains.png"));
-  basetiles.set(3, loadImage("images/prairie.png"));
-  basetiles.set(4, loadImage("images/grassland.png"));
-  basetiles.set(5, loadImage("images/savannah.png"));
-  basetiles.set(6, loadImage("images/marsh.png"));
-  basetiles.set(7, loadImage("images/swamp.png"));
-  basetiles.set(8, loadImage("images/trees.png"));
-  basetiles.set(24, loadImage("images/arctic.png"));
-  basetiles.set(25, loadImage("images/ocean.png"));
-  basetiles.set(26, loadImage("images/sealane.png"));
-  basetiles.set(32, loadImage("images/hills.png"));
-  basetiles.set(64, loadImage("images/minorriver.png"));
-  basetiles.set(160, loadImage("images/mountains.png"));
-  basetiles.set(192, loadImage("images/majorriver.png"));
-  bigbasetiles.set(0, loadImage("images/bigtundra.png"));
-  bigbasetiles.set(1, loadImage("images/bigdesert.png"));
-  bigbasetiles.set(2, loadImage("images/bigplains.png"));
-  bigbasetiles.set(3, loadImage("images/bigprairie.png"));
-  bigbasetiles.set(4, loadImage("images/biggrassland.png"));
-  bigbasetiles.set(5, loadImage("images/bigsavannah.png"));
-  bigbasetiles.set(6, loadImage("images/bigmarsh.png"));
-  bigbasetiles.set(7, loadImage("images/bigswamp.png"));
-  bigbasetiles.set(8, loadImage("images/bigtrees.png"));
-  bigbasetiles.set(24, loadImage("images/bigarctic.png"));
-  bigbasetiles.set(25, loadImage("images/bigocean.png"));
-  bigbasetiles.set(26, loadImage("images/bigsealane.png"));
-  bigbasetiles.set(32, loadImage("images/bighills.png"));
-  bigbasetiles.set(64, loadImage("images/bigminorriver.png"));
-  bigbasetiles.set(160, loadImage("images/bigmountains.png"));
-  bigbasetiles.set(192, loadImage("images/bigmajorriver.png"));
-  primetiles.set(-6, loadImage("images/lcrhighlight.png"));
-  primetiles.set(-5, loadImage("images/lcr.png"));
-  primetiles.set(-4, loadImage("images/suppressed-primehighlight-forest.png"));
-  primetiles.set(-3, loadImage("images/suppressed-primehighlight.png"));
-  primetiles.set(-2, loadImage("images/primehighlight-forest.png")); // purple
-  primetiles.set(-1, loadImage("images/primehighlight.png")); //green
-  primetiles.set(0, loadImage("images/minerals.png"));
-  primetiles.set(1, loadImage("images/oasis.png"));
-  primetiles.set(2, loadImage("images/wheat.png"));
-  primetiles.set(3, loadImage("images/cotton.png"));
-  primetiles.set(4, loadImage("images/tobacco.png"));
-  primetiles.set(5, loadImage("images/sugar.png"));
-  primetiles.set(6, loadImage("images/minerals.png"));
-  primetiles.set(7, loadImage("images/minerals.png"));
-  primetiles.set(8, loadImage("images/game.png"));
-  primetiles.set(9, loadImage("images/oasis.png"));
-  primetiles.set(10, loadImage("images/beaver.png"));
-  primetiles.set(11, loadImage("images/game.png"));
-  primetiles.set(12, loadImage("images/timber.png"));
-  primetiles.set(13, loadImage("images/timber.png"));
-  primetiles.set(14, loadImage("images/minerals.png"));
-  primetiles.set(15, loadImage("images/minerals.png"));
-  primetiles.set(24, loadImage("images/primehighlight.png"));
-  primetiles.set(25, loadImage("images/fishery.png"));
-  primetiles.set(26, loadImage("images/primehighlight.png"));
-  primetiles.set(32, loadImage("images/ore.png"));
-  primetiles.set(160, loadImage("images/silver.png"));
-  primetiles.set("depletedsilver", loadImage("images/depletedsilver.png"));
-  units.set("dcolony", loadImage("images/dcolony.png"));
-  units.set("ecolony", loadImage("images/ecolony.png"));
-  units.set("fcolony", loadImage("images/fcolony.png"));
-  units.set("scolony", loadImage("images/scolony.png"));
-  units.set("sstockade", loadImage("images/sstockade.png"));
-  units.set("estockade", loadImage("images/estockade.png"));
-  units.set("fstockade", loadImage("images/fstockade.png"));
-  units.set("dstockade", loadImage("images/dstockade.png"));
-  units.set("sfort", loadImage("images/sfort.png"));
-  units.set("efort", loadImage("images/efort.png"));
-  units.set("ffort", loadImage("images/ffort.png"));
-  units.set("dfort", loadImage("images/dfort.png"));
-  units.set("sfortress", loadImage("images/sfortress.png"));
-  units.set("efortress", loadImage("images/efortress.png"));
-  units.set("ffortress", loadImage("images/ffortress.png"));
-  units.set("dfortress", loadImage("images/dfortress.png"));
-  units.set("roads", loadImage("images/roads.png"));
-  units.set("plow", loadImage("images/plow.png"));
-  units.set("advanced", loadImage("images/advanced.png"));
-  units.set("agrarian", loadImage("images/agrarian.png"));
-  units.set("semi-nomadic", loadImage("images/semi-nomadic.png"));
-  units.set("civilized", loadImage("images/civilized.png"));
-  units.set("trained", loadImage("images/trained.png"));
-  units.set("scouted", loadImage("images/scouted.png"));
-  units.set("capital", loadImage("images/capital.png"));
-  units.set("emission", loadImage("images/emission.png"));
-  units.set("fmission", loadImage("images/fmission.png"));
-  units.set("smission", loadImage("images/smission.png"));
-  units.set("dmission", loadImage("images/dmission.png"));
 
-  units.set("colonyscreen", loadImage("images/colonyscreen.png"));
+  let basetile_files = [[0, "tundra"], [1, "desert"], [2, "plains"], [3, "prairie"],
+  [4, "grassland"], [5, "savannah"], [6, "marsh"], [7, "swamp"], [8, "trees"],
+  [24, "arctic"], [25, "ocean"], [26, "sealane"], [32, "hills"], [64, "minorriver"],
+  [160, "mountains"], [192, "majorriver"]];
+  basetile_files.forEach(([val, file]) => { basetiles.set(val, loadImage(`images/${file}.png`)) });
+  basetile_files.forEach(([val, file]) => { bigbasetiles.set(val, loadImage(`images/big${file}.png`)) });
+
+  let prime_files = [[-7, "depletedsilver"], [-6, "lcrhighlight"], [-5, "lcr"],
+  [-4, "suppressed-primehighlight-forest"], [-3, "suppressed-primehighlight"],
+  [-2, "primehighlight-forest"], [-1, "primehighlight"], [0, "minerals"],
+  [1, "oasis"], [2, "wheat"], [3, "cotton"], [4, "tobacco"], [5, "sugar"],
+  [6, "minerals"], [7, "minerals"], [8, "game"], [9, "oasis"], [10, "beaver"],
+  [11, "game"], [12, "timber"], [13, "timber"], [14, "minerals"], [15, "minerals"],
+  [24, "primehighlight"], [25, "fishery"], [26, "primehighlight"], [32, "ore"],
+  [160, "silver"]];
+  prime_files.forEach(([val, file]) => { primetiles.set(val, loadImage(`images/${file}.png`)) });
+
+  let unit_files = ["dcolony", "ecolony", "fcolony", "scolony", "sstockade", "estockade",
+    "fstockade", "dstockade", "sfort", "efort", "ffort", "dfort", "sfortress", "efortress",
+    "ffortress", "dfortress", "roads", "plow", "advanced", "agrarian", "semi-nomadic",
+    "civilized", "trained", "scouted", "capital", "emission", "fmission", "smission",
+    "dmission", "colonyscreen", "fence", "stockade", "fort", "fortress", "lumbermill",
+    "carpentersshop", "church", "cathedral", "tobacconistshouse", "tobacconistsshop",
+    "cigarfactory", "armory", "magazine", "arsenal", "ironworks", "blacksmithsshop",
+    "blacksmithshouse", "rumfactory", "distillersshop", "distillershouse",
+    "furfactory", "furtradersshop", "furtradershouse", "textilemill", "weaversshop",
+    "weavershouse", "shipyard", "drydock", "docks", "newspaper", "press",
+    "customhouse", "university", "college", "schoolhouse", "warehouse",
+    "warehouse2", "stable", "warehousestable", "warehouse2stable", "townhall",
+    "tilegrid"];
+  unit_files.forEach((file) => { units.set(file, loadImage(`images/${file}.png`)) });
   for (let i = 0; i < 10; i++) {
     units.set(i, loadImage(`images/${i}.png`));
   }
-  units.set("fence", loadImage("images/fence.png"));
-  units.set("stockade", loadImage("images/stockade.png"));
-  units.set("fort", loadImage("images/fort.png"));
-  units.set("fortress", loadImage("images/fortress.png"));
-  units.set("lumbermill", loadImage("images/lumbermill.png"));
-  units.set("carpentersshop", loadImage("images/carpentersshop.png"));
-  units.set("church", loadImage("images/church.png"));
-  units.set("cathedral", loadImage("images/cathedral.png"));
-  units.set("tobacconistshouse", loadImage("images/tobacconistshouse.png"));
-  units.set("tobacconistsshop", loadImage("images/tobacconistsshop.png"));
-  units.set("cigarfactory", loadImage("images/cigarfactory.png"));
-  units.set("armory", loadImage("images/armory.png"));
-  units.set("magazine", loadImage("images/magazine.png"));
-  units.set("arsenal", loadImage("images/arsenal.png"));
-  units.set("ironworks", loadImage("images/ironworks.png"));
-  units.set("blacksmithsshop", loadImage("images/blacksmithsshop.png"));
-  units.set("blacksmithshouse", loadImage("images/blacksmithshouse.png"));
-  units.set("rumfactory", loadImage("images/rumfactory.png"));
-  units.set("distillersshop", loadImage("images/distillersshop.png"));
-  units.set("distillershouse", loadImage("images/distillershouse.png"));
-  units.set("furfactory", loadImage("images/furfactory.png"));
-  units.set("furtradersshop", loadImage("images/furtradersshop.png"));
-  units.set("furtradershouse", loadImage("images/furtradershouse.png"));
-  units.set("textilemill", loadImage("images/textilemill.png"));
-  units.set("weaversshop", loadImage("images/weaversshop.png"));
-  units.set("weavershouse", loadImage("images/weavershouse.png"));
-  units.set("shipyard", loadImage("images/shipyard.png"));
-  units.set("drydock", loadImage("images/drydock.png"));
-  units.set("docks", loadImage("images/docks.png"));
-  units.set("newspaper", loadImage("images/newspaper.png"));
-  units.set("press", loadImage("images/press.png"));
-  units.set("customhouse", loadImage("images/customhouse.png"));
-  units.set("university", loadImage("images/university.png"));
-  units.set("college", loadImage("images/college.png"));
-  units.set("schoolhouse", loadImage("images/schoolhouse.png"));
-  units.set("warehouse", loadImage("images/warehouse.png"));
-  units.set("warehouse2", loadImage("images/warehouse2.png"));
-  units.set("stable", loadImage("images/stable.png"));
-  units.set("warehousestable", loadImage("images/warehousestable.png"));
-  units.set("warehouse2stable", loadImage("images/warehouse2stable.png"));
-  units.set("townhall", loadImage("images/townhall.png"));
 }
 
 function setup() {
   console.log('building interface');
-  createCanvas(1856, 2304 + topnav);
-  let load_save = createFileInput(loadFileBytes, false);
-  load_save.position(0, 0);
+  toolbar = createDiv();
+  toolbar.style(`width:100%`)
+  toolbar.style(`height:${topnav}px`)
+  toolbar.style('position:fixed');
+  toolbar.style('top:0');
+  toolbar.style('left:0');
+  toolbar.style('margin:0');
+
+  toolbar.style('background-color:#94e991')
+
+  let canvas = createCanvas(1856, 2304);
+  canvas.position(10, topnav);
+  load_save = createFileInput(loadFileBytes, false);
+  load_save.position(8, 8);
+  load_save.elt.accept = '.SAV';
+  load_save.parent(toolbar);
   let save_button = createButton("Save");
-  save_button.position(240, 0);
+  save_button.position(248, 8);
   save_button.mouseClicked(filesave);
+  save_button.parent(toolbar);
   let export_button = createButton("Export");
-  export_button.position(290, 0);
+  export_button.position(298, 8);
   export_button.mouseClicked(Export);
-  let reset_depleted = createButton("Reset Depleted Mines");
-  reset_depleted.position(0, 25);
-  reset_depleted.mouseClicked(undeplete);
-  let reset_lcr = createButton("Reset Rumors");
-  reset_lcr.position(155, 25);
-  reset_lcr.mouseClicked(gossip);
-  terrain_select = createSelect();
-  terrain_select.option("Tundra/Boreal Forest", 0);
-  terrain_select.option("Desert/Scrub Forest", 1);
-  terrain_select.option("Plains/Mixed Forest", 2);
-  terrain_select.option("Prairie/Broadleaf Forest", 3);
-  terrain_select.option("Grassland/Confier Forest", 4);
-  terrain_select.option("Savannah/Tropical Forest", 5);
-  terrain_select.option("Marsh/Wetland Forest", 6);
-  terrain_select.option("Swamp/Rain Forest", 7);
-  terrain_select.option("Arctic", 24);
-  terrain_select.option("Ocean", 25);
-  terrain_select.option("Sea Lane", 26);
-  terrain_select.position(350, 0);
-  terrain_select.changed(updatebox);
-  feature_select = createSelect();
-  feature_select.option("(None)", 0);
-  feature_select.option("Forest", 8);
-  feature_select.option("Mountains", 160);
-  feature_select.option("Hills", 32);
-  feature_select.option("Minor River", 64);
-  feature_select.option("Major River", 192);
-  feature_select.option("Hills/Minor River", 96);
-  feature_select.option("Forest/Minor River", 72);
-  feature_select.option("Forest/Major River", 200);
-  feature_select.position(550, 0);
-  colony_check = createCheckbox("Colonies", true);
-  colony_check.position(700, 0);
-  colony_check.mouseClicked(draw);
-  village_check = createCheckbox("Villages", true);
-  village_check.position(800, 0);
-  village_check.mouseClicked(draw);
-  roads_check = createCheckbox("Roads", true);
-  roads_check.position(665, 25);
-  roads_check.mouseClicked(draw);
-  plow_check = createCheckbox("Plowed", true);
-  plow_check.position(575, 25);
-  plow_check.mouseClicked(draw);
-  prime_check = createCheckbox("Prime Resources", true);
-  prime_check.position(270, 25);
-  prime_check.mouseClicked(draw);
-  lcr_check = createCheckbox("Rumors", true);
-  lcr_check.position(410, 25);
-  lcr_check.mouseClicked(draw);
-  river_check = createCheckbox("Rivers", true);
-  river_check.position(495, 25);
-  river_check.mouseClicked(draw);
-  region_check = createCheckbox("Regions", false);
-  region_check.position(745, 25);
-  region_check.mouseClicked(regionmode);
-  pacific_check = createCheckbox("Pacific", false);
-  pacific_check.position(835, 25);
-  pacific_check.mouseClicked(pacificmode);
+  export_button.parent(toolbar);
+
   noLoop();
   redraw();
+}
+
+function create_map_controls() {
+  console.log('Creating Map Controls');
+  let reset_depleted = createButton("Reset Depleted Mines");
+  reset_depleted.position(8, 33);
+  reset_depleted.mouseClicked(undeplete);
+  map_controls.set("reset_depleted", reset_depleted);
+  let reset_lcr = createButton("Reset Rumors");
+  reset_lcr.position(163, 33);
+  reset_lcr.mouseClicked(gossip);
+  map_controls.set("reset_lcr", reset_lcr);
+  let terrain_select = createSelect();
+  let terrain_opts = [["Tundra/Boreal Forest", 0], ["Desert/Scrub Forest", 1],
+  ["Plains/Mixed Forest", 2], ["Prairie/Broadleaf Forest", 3], ["Grassland/Confier Forest", 4],
+  ["Savannah/Tropical Forest", 5], ["Marsh/Wetland Forest", 6], ["Swamp/Rain Forest", 7],
+  ["Arctic", 24], ["Ocean", 25], ["Sea Lane", 26]];
+  terrain_opts.forEach(([name, val]) => { terrain_select.option(name, val) });
+  terrain_select.position(358, 8);
+  terrain_select.changed(updateFeatureOptions);
+  map_controls.set("terrain_select", terrain_select);
+  let feature_select = createSelect();
+  feature_opts = [["(None)", 0], ["Forest", 8], ["Mountains", 160], ["Hills", 32], ["Minor River", 64],
+  ["Major River", 192], ["Hills/Minor River", 96], ["Forest/Minor River", 72], ["Forest/Major River", 200]];
+  feature_opts.forEach(([name, val]) => { feature_select.option(name, val) });
+  feature_select.position(558, 8);
+  map_controls.set("feature_select", feature_select);
+  let colony_check = createCheckbox("Colonies", true);
+  colony_check.position(708, 8);
+  colony_check.mouseClicked(draw);
+  map_controls.set("colony_check", colony_check);
+  let village_check = createCheckbox("Villages", true);
+  village_check.position(808, 8);
+  village_check.mouseClicked(draw);
+  map_controls.set("village_check", village_check);
+  let roads_check = createCheckbox("Roads", true);
+  roads_check.position(673, 33);
+  roads_check.mouseClicked(draw);
+  map_controls.set("roads_check", roads_check);
+  let plow_check = createCheckbox("Plowed", true);
+  plow_check.position(583, 33);
+  plow_check.mouseClicked(draw);
+  map_controls.set("plow_check", plow_check);
+  let prime_check = createCheckbox("Prime Resources", true);
+  prime_check.position(278, 33);
+  prime_check.mouseClicked(draw);
+  map_controls.set("prime_check", prime_check);
+  let lcr_check = createCheckbox("Rumors", true);
+  lcr_check.position(418, 33);
+  lcr_check.mouseClicked(draw);
+  map_controls.set("lcr_check", lcr_check);
+  let river_check = createCheckbox("Rivers", true);
+  river_check.position(503, 33);
+  river_check.mouseClicked(draw);
+  map_controls.set("river_check", river_check);
+  let region_check = createCheckbox("Regions", false);
+  region_check.position(753, 33);
+  region_check.mouseClicked(regionmode);
+  map_controls.set("region_check", region_check);
+  let pacific_check = createCheckbox("Pacific", false);
+  pacific_check.position(843, 33);
+  pacific_check.mouseClicked(pacificmode);
+  map_controls.set("pacific_check", pacific_check);
+  map_controls.set("instructions", createSpan());
+  map_controls.get("instructions").position(8, 56);
+  //map_controls.get("instructions").style("color:white");
+  map_controls.get("instructions").style("font-size:18px");
+  map_controls.forEach((val) => { val.parent(toolbar) });
 }
 
 function create_colony_controls() {
@@ -271,12 +176,12 @@ function create_colony_controls() {
 
   colonyselect = createSelect();
   colonyselect.position(700, topnav + 60);
-  for (let i = 0; i < colonies.length; i++) {
-    colonyselect.option(colonies[i].name, i)
+  for (let i = 0; i < game.colonies.length; i++) {
+    colonyselect.option(game.colonies[i].name, i)
   }
   colonyselect.mouseClicked(draw);
 
-  let vert = topnav + 390;
+  let vert = 480
   let horiz = 30;
   for (const [name, opts] of BUILDINGGROUPS.entries()) {
     if (opts.length < 2) {
@@ -285,7 +190,7 @@ function create_colony_controls() {
     let radGroup = createRadio();
     opts.forEach((opt) => opt ? radGroup.option(opt, BUILDINGS.get(opt).text) : radGroup.option("(None)"));
     if (vert > topnav + 610) {
-      vert = topnav + 390;
+      vert = 480;
       horiz += 400;
     }
     radGroup.position(horiz, vert += 30);
@@ -298,11 +203,12 @@ function create_colony_controls() {
   colony_controls.set("powerselect", powerselect);
 }
 
-function remove_colony_controls() {
-  console.log('Removing controlset for colony view');
-  for (const [name, elem] of colony_controls.entries()) {
+function remove_controls(ctrl_set) {
+  console.log('Removing control set');
+  for (const [name, elem] of ctrl_set.entries()) {
+    console.log(`Deleting ${name}`);
     p5.Element.prototype.remove.call(elem);
-    colony_controls.delete(name);
+    ctrl_set.delete(name);
   }
 }
 
@@ -314,17 +220,35 @@ function selectpower() {
     ctl.elt.remove(0);
   }
   for (let i = 0; i < game.num_colonies; i++) {
-    if (colonies[i].power == pwr) {
-      ctl.option(colonies[i].name, i);
+    if (game.colonies[i].power == pwr) {
+      ctl.option(game.colonies[i].name, i);
     }
   }
   redraw();
 }
 
 function setmapview(event) {
+  if (view == "map") {
+    redraw();
+    return;
+  }
   view = "map";
-  remove_colony_controls();
-  resizeCanvas(1856, 2304 + topnav);
+  remove_controls(colony_controls);
+  create_map_controls();
+  resizeCanvas(1856, 2304);
+  if (event) {
+    event.stopPropagation();
+  }
+}
+
+function setcolonyview(event) {
+  if (view == "colony") {
+    return;
+  }
+  view = "colony";
+  remove_controls(map_controls);
+  create_colony_controls();
+  resizeCanvas(640, 400);
   if (event) {
     event.stopPropagation();
   }
@@ -334,7 +258,7 @@ function filesave() {
   let modcount = 0;
   for (let row = 1; row < game.mapheight - 1; row++) {
     for (let col = 1; col < game.mapwidth - 1; col++) {
-      if (mapgrid[row][col].modified) {
+      if (game.grid[row][col].modified) {
         modcount++;
         console.log(
           "Updating-- Row:",
@@ -344,31 +268,31 @@ function filesave() {
           "Terrain:",
           game.bytes[game.tmapstart + game.mapwidth * row + col],
           "->",
-          mapgrid[row][col].terrainbyte,
+          game.grid[row][col].terrainbyte,
           "Mask",
           game.bytes[game.mmapstart + game.mapwidth * row + col],
           "->",
-          mapgrid[row][col].maskbyte,
+          game.grid[row][col].maskbyte,
           "Path",
           game.bytes[game.pmapstart + game.mapwidth * row + col],
           "->",
-          mapgrid[row][col].pathbyte
+          game.grid[row][col].pathbyte
         );
         game.bytes[game.tmapstart + game.mapwidth * row + col] =
-          mapgrid[row][col].terrainbyte;
+          game.grid[row][col].terrainbyte;
         game.bytes[game.mmapstart + game.mapwidth * row + col] =
-          mapgrid[row][col].maskbyte;
+          game.grid[row][col].maskbyte;
         game.bytes[game.pmapstart + game.mapwidth * row + col] =
-          mapgrid[row][col].pathbyte;
+          game.grid[row][col].pathbyte;
       }
     }
   }
 
   for (let i = 0; i < game.num_colonies; i++) {
-    if (colonies[i].modified) {
-      console.log(`Updating ${colonies[i].name}`);
+    if (game.colonies[i].modified) {
+      console.log(`Updating ${game.colonies[i].name}`);
       let address = game.colstart + i * 202;
-      let bldgs = colonies[i].buildingbytes;
+      let bldgs = game.colonies[i].buildingbytes;
       for (let j = 0; j < bldgs.length; j++) {
         game.bytes[address + 0x84 + j] = bldgs[j];
       }
@@ -377,6 +301,16 @@ function filesave() {
   }
 
   game.bytes[game.tmapstart + 4 * game.mapsize + 0x264] = game.offsetbyte;
+
+  if (modcount){
+    console.log("Modified tiles, updating land and sea routing grid");
+    let land = game.landroutegrid;
+    let sea = game.searoutegrid;
+    for (let i = 0; i < land.length; i++){
+      game.bytes[game.landroutestart + i] = land[i];
+      game.bytes[game.searoutestart + i] = sea[i];
+    }
+  }
   console.log(`Modified ${modcount} tiles`);
   console.log(`Setting prime: ${game.prime}, rumors: ${game.lcr}`);
   if (!regioncheck()) {
@@ -403,80 +337,69 @@ var saveByteArray = (function () {
 
 function draw() {
 
-  background("#b2a1e5");
-  if (view == "colony") {
-    if (game != null) {
-      drawColony();
-    }
-  } else {
-
-    textSize(16);
-    fill(255);
-    textAlign(LEFT, BOTTOM);
-    if (region_check.checked()) {
-      text("Click: Increment  --  Ctrl+Click: Decrement", 10, topnav - 5);
-    } else if (pacific_check.checked()) {
-      text("Click: Toggle", 10, topnav - 5);
-    } else {
-      text(
-        "Click: Paint Tile  --  Ctrl+Click: Toggle Plow  --  Shift+Click: Toggle Road  --  Ctrl+Right/Left/Up/Down: +/- Prime/Rumors  --  Ctrl+Shift+Click: Deplete Prime/Downgrade Colony",
-        10,
-        topnav - 5
-      );
-    }
-    if (game != null) {
-      drawMap();
-    }
+  //background("#b2a1e5");
+  switch (view) {
+    case "colony":
+      if (game != null) {
+        drawColony();
+      }
+      break;
+    case "map":
+      if (game != null) {
+        drawMap();
+      }
+      break;
   }
 }
 
-function updatebox() {
+function updateFeatureOptions() {
   const forests = ["8", "72", "200"];
   const hills = ["160", "32", "96"];
-  if (int(terrain_select.value()) > 7) {
-    forests.map((x) => feature_select.disable(x));
-    if (int(terrain_select.value()) > 24) {
-      hills.map((x) => feature_select.disable(x));
+  if (int(map_controls.get("terrain_select").value()) > 7) {
+    forests.map((x) => map_controls.get("feature_select").disable(x));
+    if (int(map_controls.get("terrain_select").value()) > 24) {
+      hills.map((x) => map_controls.get("feature_select").disable(x));
     } else {
-      hills.map((x) => feature_select.enable(x));
+      hills.map((x) => map_controls.get("feature_select").enable(x));
     }
   } else {
-    forests.map((x) => feature_select.enable(x));
-    hills.map((x) => feature_select.enable(x));
+    forests.map((x) => map_controls.get("feature_select").enable(x));
+    hills.map((x) => map_controls.get("feature_select").enable(x));
   }
 }
 
 function mouseClicked(event) {
-  console.log(`Click at ${event.pageX}, ${event.pageY}`);
+  console.log(`Click at ${event.offsetX}, ${event.offsetY} on ${event.target.id}`);
+  if (event.target.id != 'defaultCanvas0') {
+    return;
+  }
   if (view == "map") {
-    if (event.pageY <= topnav) {
-      return;
-    }
+    // if (event.pageY <= topnav) {
+    //   return;
+    // }
     if (game == null) {
       return;
     }
-    let row = Math.floor((event.pageY - topnav - 8) / 32); // subtract 8 for rendering bug that adds buffer
-    let col = Math.floor((event.pageX - 8) / 32);
-    click_tile = mapgrid[row][col];
-    if (click_tile.colony && colony_check.checked()) {
+    let row = Math.floor((event.offsetY) / 32);
+    let col = Math.floor((event.offsetX) / 32);
+    click_tile = game.grid[row][col];
+    if (click_tile.colony && map_controls.get("colony_check").checked()) {
       for (let i = 0; i < game.num_colonies; i++) {
         if (
           col == game.bytes[game.colstart + i * 202] &&
           row == game.bytes[game.colstart + i * 202 + 1]
         ) {
-          view = "colony";
-          create_colony_controls();
-          console.log(`Clicked on ${colonies[i].power} colony of ${colonies[i].name}`);
-          colony_controls.get("powerselect").selected(colonies[i].power);
+          setcolonyview();
+          console.log(`Clicked on ${game.colonies[i].power} colony of ${game.colonies[i].name}`);
+          colony_controls.get("powerselect").selected(game.colonies[i].power);
           selectpower();
           colony_controls.get("colonyselect").selected(i);
-          resizeCanvas(975, 750);
           break;
         }
       }
       return;
     }
-    if (region_check.checked()) {
+    if (map_controls.get("region_check").checked()) {
       if (event.ctrlKey) {
         click_tile.pathregion += 15;
       } else {
@@ -487,7 +410,7 @@ function mouseClicked(event) {
       redraw();
       return;
     }
-    if (pacific_check.checked()) {
+    if (map_controls.get("pacific_check").checked()) {
       if (click_tile.iswater) {
         click_tile.pacific = !click_tile.pacific;
         click_tile.modified = true;
@@ -522,7 +445,7 @@ function mouseClicked(event) {
       return;
     }
 
-    newterr = int(terrain_select.value()) + int(feature_select.value());
+    newterr = int(map_controls.get("terrain_select").value()) + int(map_controls.get("feature_select").value());
     console.log(newterr);
     click_tile.update(newterr);
     if (click_tile.iswater) {
@@ -550,50 +473,7 @@ function fileread(data, filename) {
   // read headers
   game = new Gamestate(data.bytes);
   game.name = filename;
-  mapgrid = [];
-  colonies = [];
-  for (let row = 0; row < game.mapheight; row++) {
-    let tilerow = [];
-    for (let col = 0; col < game.mapwidth; col++) {
-      let tmp_tile = new Tile(
-        game.bytes[game.tmapstart + row * game.mapwidth + col],
-        game.bytes[game.mmapstart + row * game.mapwidth + col],
-        game.bytes[game.pmapstart + row * game.mapwidth + col]
-      );
-      tilerow.push(tmp_tile);
-    }
-    mapgrid.push(tilerow);
-  }
-  console.log(
-    `Colony offset:      0x${game.colstart.toString(16).padStart(4, "0")}`
-  );
-  console.log(
-    `Village offset:     0x${game.vilstart.toString(16).padStart(4, "0")}`
-  );
-  console.log(
-    `Terrain map offset: 0x${game.tmapstart.toString(16).padStart(4, "0")}`
-  );
-  console.log(
-    `Mask map offset:    0x${game.mmapstart.toString(16).padStart(4, "0")}`
-  );
-  console.log(
-    `Path map offset:    0x${game.pmapstart.toString(16).padStart(4, "0")}`
-  );
-
-  const powers = ["e", "f", "s", "d"];
-  const structure = ["colony", "stockade", "", "fort", "", "", "", "fortress"];
-  for (let i = 0; i < game.num_colonies; i++) {
-    // code to mark colonies in mapgrid
-
-    let address = game.colstart + i * 202;
-    col = game.bytes[address];
-    row = game.bytes[address + 1];
-    mapgrid[row][col].colony =
-      powers[game.bytes[address + 0x1a]] +
-      structure[game.bytes[address + 0x84] & 0x7];
-    console.log('pushing new colony');
-    colonies.push(new Colony(game.bytes.slice(address, address + 202)));
-  }
+  load_save.elt.value = null;
 
   const tribes = [
     "civilized",
@@ -610,27 +490,27 @@ function fileread(data, filename) {
     col = game.bytes[game.vilstart + i * 18];
     row = game.bytes[game.vilstart + i * 18 + 1];
 
-    mapgrid[row][col].village =
+    game.grid[row][col].village =
       tribes[game.bytes[game.vilstart + i * 18 + 2] - 4];
-    mapgrid[row][col].trained =
+    game.grid[row][col].trained =
       Boolean(game.bytes[game.vilstart + i * 18 + 3] & 0x02);
-    mapgrid[row][col].capital =
+    game.grid[row][col].capital =
       Boolean(game.bytes[game.vilstart + i * 18 + 3] & 0x04);
-    mapgrid[row][col].scouted =
+    game.grid[row][col].scouted =
       Boolean(game.bytes[game.vilstart + i * 18 + 3] & 0x08);
 
     if (game.bytes[game.vilstart + i * 18 + 5] != 0xFF) {
-      mapgrid[row][col].mission = ["e", "f", "s", "d"][game.bytes[game.vilstart + i * 18 + 5] & 0x03] + "mission";
+      game.grid[row][col].mission = ["e", "f", "s", "d"][game.bytes[game.vilstart + i * 18 + 5] & 0x03] + "mission";
     }
 
-    console.log(`Tribe ${row} ${col} ${game.bytes[game.vilstart + i * 18 + 3]} ${game.bytes[game.vilstart + i * 18 + 5]} ${game.bytes[game.vilstart + i * 18 + 6]} ${game.bytes[game.vilstart + i * 18 + 7]}`);
+    //console.log(`Tribe ${row} ${col} ${game.bytes[game.vilstart + i * 18 + 3]} ${game.bytes[game.vilstart + i * 18 + 5]} ${game.bytes[game.vilstart + i * 18 + 6]} ${game.bytes[game.vilstart + i * 18 + 7]}`);
   }
   setmapview();
 }
 
 function colonybuildings() {
   console.log("adjust colony options");
-  curr_colony = colonies[int(colony_controls.get("colonyselect").selected())];
+  curr_colony = game.colonies[int(colony_controls.get("colonyselect").selected())];
   curr_colony.modified = true;
 
   for (const [grp, bldgs] of BUILDINGGROUPS.entries()) {
@@ -650,10 +530,10 @@ function colonybuildings() {
   }
   const powers = ["e", "f", "s", "d"];
   const structure = ["colony", "stockade", "", "fort", "", "", "", "fortress"];
-  mapgrid[curr_colony.row][curr_colony.col].colony =
+  game.grid[curr_colony.row][curr_colony.col].colony =
     powers[curr_colony.power] + structure[curr_colony.fortress * 4 +
     curr_colony.fort * 2 + curr_colony.stockade * 1];
-  console.log("Update fortification", curr_colony.row, curr_colony.col, mapgrid[curr_colony.row][curr_colony.col].colony);
+  console.log("Update fortification", curr_colony.row, curr_colony.col, game.grid[curr_colony.row][curr_colony.col].colony);
   console.log("Building flags: ", curr_colony.buildingbytes);
   redraw();
 }
@@ -672,33 +552,33 @@ function drawColony() {
 
   const goods = ["Food", "Sugar", "Tobacco", "Cotton", "Furs", "Lumber", "Ore", "Silver", "Horses", "Rum", "Cigars", "Cloth", "Coats", "Trade Goods", "Tools", "Muskets"];
 
-  curr_colony = colonies[int(colony_controls.get("colonyselect").selected())];
-  image(units.get("colonyscreen"), 0, topnav);
+  curr_colony = game.colonies[int(colony_controls.get("colonyselect").selected())];
+  image(units.get("colonyscreen"), 0, 0);
   for (let i = 0; i < curr_colony.cargo.length; i++) {
     if (curr_colony.cargo[i] > 999) {
-      image(units.get(Math.floor(curr_colony.cargo[i] / 1000)), i * 38 + 6, topnav + 388);
-      image(units.get(Math.floor(curr_colony.cargo[i] / 100) % 10), i * 38 + 14, topnav + 388);
-      image(units.get(Math.floor(curr_colony.cargo[i] / 10) % 10), i * 38 + 22, topnav + 388);
-      image(units.get(curr_colony.cargo[i] % 10), i * 38 + 30, topnav + 388);
+      image(units.get(Math.floor(curr_colony.cargo[i] / 1000)), i * 38 + 6, 388);
+      image(units.get(Math.floor(curr_colony.cargo[i] / 100) % 10), i * 38 + 14, 388);
+      image(units.get(Math.floor(curr_colony.cargo[i] / 10) % 10), i * 38 + 22, 388);
+      image(units.get(curr_colony.cargo[i] % 10), i * 38 + 30, 388);
     } else if (curr_colony.cargo[i] > 99) {
-      image(units.get(Math.floor(curr_colony.cargo[i] / 100)), i * 38 + 10, topnav + 388);
-      image(units.get(Math.floor(curr_colony.cargo[i] / 10) % 10), i * 38 + 18, topnav + 388);
-      image(units.get(curr_colony.cargo[i] % 10), i * 38 + 26, topnav + 388);
+      image(units.get(Math.floor(curr_colony.cargo[i] / 100)), i * 38 + 10, 388);
+      image(units.get(Math.floor(curr_colony.cargo[i] / 10) % 10), i * 38 + 18, 388);
+      image(units.get(curr_colony.cargo[i] % 10), i * 38 + 26, 388);
     } else if (curr_colony.cargo[i] > 9) {
-      image(units.get(Math.floor(curr_colony.cargo[i] / 10)), i * 38 + 14, topnav + 388);
-      image(units.get(curr_colony.cargo[i] % 10), i * 38 + 22, topnav + 388);
+      image(units.get(Math.floor(curr_colony.cargo[i] / 10)), i * 38 + 14, 388);
+      image(units.get(curr_colony.cargo[i] % 10), i * 38 + 22, 388);
     } else {
-      image(units.get(curr_colony.cargo[i]), i * 38 + 18, topnav + 388);
+      image(units.get(curr_colony.cargo[i]), i * 38 + 18, 388);
     }
   }
 
   // map at 448, 64 (tiles 48x48)
   for (let r = -1; r < 2; r++) {
     for (let c = -1; c < 2; c++) {
-      tile = mapgrid[curr_colony.row + r][curr_colony.col + c];
-      image(bigbasetiles.get(tile.base), 496 + c * 48, topnav + 112 + r * 48);
+      tile = game.grid[curr_colony.row + r][curr_colony.col + c];
+      image(bigbasetiles.get(tile.base), 496 + c * 48, 112 + r * 48);
       if (tile.forested) {
-        image(bigbasetiles.get(8), 496 + c * 48, topnav + 112 + r * 48);
+        image(bigbasetiles.get(8), 496 + c * 48, 112 + r * 48);
       }
     }
   }
@@ -709,7 +589,7 @@ function drawColony() {
 
       if (bldgs[i] != null && curr_colony[bldgs[i]]) {
         if (!["stable", "warehouse"].includes(grp)) {  // combo graphics
-          image(units.get(bldgs[i]), BUILDINGS.get(bldgs[i]).x, topnav + BUILDINGS.get(bldgs[i]).y);
+          image(units.get(bldgs[i]), BUILDINGS.get(bldgs[i]).x, BUILDINGS.get(bldgs[i]).y);
         }
         if (colony_controls.has(grp)) {
           colony_controls.get(grp).selected(bldgs[i]);
@@ -736,7 +616,7 @@ function drawColony() {
     combo = "warehouse";
   }
   if (combo) {
-    image(units.get(combo), BUILDINGS.get("warehouse").x, topnav + BUILDINGS.get("warehouse").y);
+    image(units.get(combo), BUILDINGS.get("warehouse").x, BUILDINGS.get("warehouse").y);
   }
 
   surrounding = [[-1, -1], [-1, 0], [-1, 1], [0, 1], [1, 1], [1, 0], [1, -1], [0, -1]];
@@ -744,10 +624,10 @@ function drawColony() {
   ocean = false;
   console.log('checking water tiles');
   for ([row, col] of surrounding) {
-    if (mapgrid[curr_colony.row + row][curr_colony.col + col].iswater) {
+    if (game.grid[curr_colony.row + row][curr_colony.col + col].iswater) {
       water = true;
-      console.log(`water found at ${row}, ${col} with region ${mapgrid[curr_colony.row + row][curr_colony.col + col].pathregion}`);
-      if (mapgrid[curr_colony.row + row][curr_colony.col + col].pathregion == 1) {
+      console.log(`water found at ${row}, ${col} with region ${game.grid[curr_colony.row + row][curr_colony.col + col].pathregion}`);
+      if (game.grid[curr_colony.row + row][curr_colony.col + col].pathregion == 1) {
         ocean = true;
         break;
       }
@@ -775,14 +655,23 @@ function drawColony() {
 
 function drawMap() {
   // display map
+  let sep = "&nbsp&nbsp&nbsp&nbsp--&nbsp&nbsp&nbsp&nbsp";
+  if (map_controls.get("region_check").checked()) {
+    map_controls.get('instructions').html(`Click: Increment${sep}Ctrl+Click: Decrement`);
+  } else if (map_controls.get("pacific_check").checked()) {
+    map_controls.get('instructions').html("Click: Toggle");
+  } else {
+    map_controls.get('instructions').html(
+      `Click: Paint Tile${sep}Ctrl+Click: Toggle Plow${sep}Shift+Click: Toggle Road<br>Ctrl+Right/Left/Up/Down: +/- Prime/Rumors${sep}Ctrl+Shift+Click: Deplete Prime`);
+  }
 
   for (let row = 0; row < game.mapheight; row++) {
     for (let col = 0; col < game.mapwidth; col++) {
-      curr_tile = mapgrid[row][col];
+      curr_tile = game.grid[row][col];
 
       function sprite(img, condition) {
         if (condition == null || condition) {
-          image(img, 32 * col, 32 * row + topnav);
+          image(img, 32 * col, 32 * row);
         }
       }
 
@@ -791,26 +680,26 @@ function drawMap() {
       sprite(basetiles.get(8), curr_tile.forested);
       sprite(basetiles.get(160), curr_tile.hills && curr_tile.prominent);
       sprite(basetiles.get(32), curr_tile.hills && !curr_tile.prominent);
-      if (river_check.checked()) {
+      if (map_controls.get("river_check").checked()) {
         sprite(basetiles.get(192), curr_tile.river && curr_tile.prominent);
         sprite(basetiles.get(64), curr_tile.river && !curr_tile.prominent);
       }
 
       // plow
-      sprite(units.get("plow"), curr_tile.plowed && plow_check.checked());
+      sprite(units.get("plow"), curr_tile.plowed && map_controls.get("plow_check").checked());
 
       // prime
-      if (prime_check.checked()) {
+      if (map_controls.get("prime_check").checked()) {
         if (
-          primepattern
+          PRIMEPATTERN
             .get(row % 4)
             .includes((col + 4 * game.prime + Math.floor(row / 4) * 12) % 64)
         ) {
           if (curr_tile.depleted) {
             sprite(
-              primetiles.get("depletedsilver"),
+              primetiles.get(-7),
               curr_tile.hills && curr_tile.prominent
-            );
+            ); // depleted silver for mountains
             sprite(primetiles.get(-3));
           } else {
             sprite(primetiles.get(160), curr_tile.hills && curr_tile.prominent);
@@ -823,7 +712,7 @@ function drawMap() {
           }
         }
         if (
-          primepattern
+          PRIMEPATTERN
             .get(row % 4)
             .includes(
               (col + 4 * game.prime + Math.floor(row / 4) * 12 + 60) % 64
@@ -840,7 +729,7 @@ function drawMap() {
 
       // rumors
       if (
-        rumorpattern
+        RUMORPATTERN
           .get(row % 4)
           .includes(
             (col + 64 * game.lcr + 68 * game.prime + Math.floor(row / 4) * 12) %
@@ -850,7 +739,7 @@ function drawMap() {
         sprite(
           primetiles.get(-5),
           !curr_tile.iswater &&
-          lcr_check.checked() &&
+          map_controls.get("lcr_check").checked() &&
           0 < row &&
           row < game.mapheight - 1 &&
           curr_tile.explorer == 0x0f
@@ -858,59 +747,71 @@ function drawMap() {
         sprite(
           primetiles.get(-6),
           !curr_tile.iswater &&
-          lcr_check.checked() &&
+          map_controls.get("lcr_check").checked() &&
           0 < row &&
           row < game.mapheight - 1 &&
           curr_tile.explorer != 0x0f
         );
       }
       // road
-      sprite(units.get("roads"), curr_tile.road && roads_check.checked());
+      sprite(units.get("roads"), curr_tile.road && map_controls.get("roads_check").checked());
     }
   }
   for (let row = 0; row < game.mapheight; row++) {
     for (let col = 0; col < game.mapwidth; col++) {
       function colsprite(img, condition) {
         if (condition == null || condition) {
-          image(img, 32 * col - 4, 32 * row + topnav);
+          image(img, 32 * col - 4, 32 * row);
         }
       }
-      curr_tile = mapgrid[row][col];
+      curr_tile = game.grid[row][col];
       // colony
       colsprite(
         units.get(curr_tile.colony),
-        curr_tile.colony != null && colony_check.checked()
+        curr_tile.colony != null && map_controls.get("colony_check").checked()
       );
       colsprite(
         units.get(curr_tile.village),
-        curr_tile.village != null && village_check.checked()
+        curr_tile.village != null && map_controls.get("village_check").checked()
       );
       colsprite(
         units.get("scouted"),
-        curr_tile.scouted && village_check.checked()
+        curr_tile.scouted && map_controls.get("village_check").checked()
       );
       colsprite(
         units.get("capital"),
-        curr_tile.capital && village_check.checked()
+        curr_tile.capital && map_controls.get("village_check").checked()
       );
       colsprite(
         units.get("trained"),
-        curr_tile.trained && village_check.checked()
+        curr_tile.trained && map_controls.get("village_check").checked()
       );
       colsprite(
         units.get(curr_tile.mission),
-        curr_tile.mission != null && village_check.checked()
+        curr_tile.mission != null && map_controls.get("village_check").checked()
       );
-      if (region_check.checked()) {
+      if (map_controls.get("region_check").checked()) {
+        textSize(16);
+        fill(255);
+        if (row == 0 || row == game.mapheight - 1) { fill(0) };
         textAlign(CENTER, CENTER);
-        text(curr_tile.pathregion, 32 * col + 16, 32 * row + topnav + 16);
+        text(curr_tile.pathregion, 32 * col + 16, 32 * row + 16);
       }
-      if (pacific_check.checked()) {
+      if (map_controls.get("pacific_check").checked()) {
+        textSize(16);
+        fill(255);
+        if (row == 0 || row == game.mapheight - 1) { fill(0) };
         textAlign(CENTER, CENTER);
-        text(int(curr_tile.pacific), 32 * col + 16, 32 * row + topnav + 16);
+        text(int(curr_tile.pacific), 32 * col + 16, 32 * row + 16);
       }
     }
   }
+  for (let row = 0; row < Math.ceil(game.mapheight / 4); row++) {
+    for (let col = 0; col < Math.ceil(game.mapwidth / 4); col++) {
+      image(units.get("tilegrid"), 128 * col, 128 * row);
+    }
+  }
+
 }
 
 function keyPressed() {
@@ -942,9 +843,9 @@ function undeplete() {
   }
   for (let row = 1; row < game.mapheight - 1; row++) {
     for (let col = 1; col < game.mapwidth - 1; col++) {
-      if (!mapgrid[row][col].iswater && mapgrid[row][col].depleted) {
-        mapgrid[row][col].depleted = false;
-        mapgrid[row][col].modified = true;
+      if (!game.grid[row][col].iswater && game.grid[row][col].depleted) {
+        game.grid[row][col].depleted = false;
+        game.grid[row][col].modified = true;
       }
     }
   }
@@ -959,17 +860,17 @@ function gossip() {
   for (let row = 1; row < game.mapheight - 1; row++) {
     for (let col = 1; col < game.mapwidth - 1; col++) {
       if (
-        rumorpattern
+        RUMORPATTERN
           .get(row % 4)
           .includes(
             (col + 64 * game.lcr + 68 * game.prime + Math.floor(row / 4) * 12) %
             128
           ) &&
         !curr_tile.iswater &&
-        mapgrid[row][col].explorer != 0x0f
+        game.grid[row][col].explorer != 0x0f
       ) {
-        mapgrid[row][col].explorer = 0x0f;
-        mapgrid[row][col].modified = true;
+        game.grid[row][col].explorer = 0x0f;
+        game.grid[row][col].modified = true;
       }
     }
   }
@@ -983,10 +884,10 @@ function offshorefish() {
   }
   for (let row = 1; row < game.mapheight - 1; row++) {
     for (let col = 1; col < game.mapwidth - 1; col++) {
-      curr_tile = mapgrid[row][col];
+      curr_tile = game.grid[row][col];
       if (curr_tile.base == 25) {
         if (
-          primepattern
+          PRIMEPATTERN
             .get(row % 4)
             .includes((col + 4 * game.prime + Math.floor(row / 4) * 12) % 64)
         ) {
@@ -1001,7 +902,7 @@ function offshorefish() {
               lcol < Math.min(col + 3, game.mapwidth - 1);
               lcol++
             ) {
-              if (!mapgrid[lrow][lcol].iswater) {
+              if (!game.grid[lrow][lcol].iswater) {
                 nearland = true;
               }
             }
@@ -1022,53 +923,33 @@ function offshorefish() {
 }
 
 function regionmode() {
-  if (region_check.checked()) {
-    roads_check.checked(false);
-    prime_check.checked(false);
-    lcr_check.checked(false);
-    river_check.checked(false);
-    plow_check.checked(false);
-    colony_check.checked(false);
-    village_check.checked(false);
-    pacific_check.checked(false);
-    terrain_select.disable();
-    feature_select.disable();
+  let checks = ["roads_check", "prime_check", "lcr_check", "river_check", "plow_check", "colony_check", "village_check"];
+
+  if (map_controls.get("region_check").checked()) {
+    checks.forEach((elem) => map_controls.get(elem).checked(false));
+    map_controls.get("terrain_select").disable();
+    map_controls.get("feature_select").disable();
+    map_controls.get("pacific_check").checked(false);
   } else {
-    roads_check.checked(true);
-    prime_check.checked(true);
-    lcr_check.checked(true);
-    river_check.checked(true);
-    plow_check.checked(true);
-    colony_check.checked(true);
-    village_check.checked(true);
-    terrain_select.enable();
-    feature_select.enable();
+    checks.forEach((elem) => map_controls.get(elem).checked(true));
+    map_controls.get("terrain_select").enable();
+    map_controls.get("feature_select").enable();
   }
   redraw();
 }
 
 function pacificmode() {
-  if (pacific_check.checked()) {
-    roads_check.checked(false);
-    prime_check.checked(false);
-    lcr_check.checked(false);
-    river_check.checked(false);
-    plow_check.checked(false);
-    colony_check.checked(false);
-    village_check.checked(false);
-    region_check.checked(false);
-    terrain_select.disable();
-    feature_select.disable();
+  let checks = ["roads_check", "prime_check", "lcr_check", "river_check", "plow_check", "colony_check", "village_check"];
+
+  if (map_controls.get("pacific_check").checked()) {
+    checks.forEach((elem) => map_controls.get(elem).checked(false));
+    map_controls.get("terrain_select").disable();
+    map_controls.get("feature_select").disable();
+    map_controls.get("region_check").checked(false);
   } else {
-    roads_check.checked(true);
-    prime_check.checked(true);
-    lcr_check.checked(true);
-    river_check.checked(true);
-    plow_check.checked(true);
-    colony_check.checked(true);
-    village_check.checked(true);
-    terrain_select.enable();
-    feature_select.enable();
+    checks.forEach((elem) => map_controls.get(elem).checked(true));
+    map_controls.get("terrain_select").enable();
+    map_controls.get("feature_select").enable();
   }
   redraw();
 }
@@ -1096,7 +977,7 @@ function Export() {
         mpfile[row * game.mapwidth + col + 6] = 25;
         mpfile[2 * game.mapsize + row * game.mapwidth + col + 6] = 0;
       } else {
-        mpfile[row * game.mapwidth + col + 6] = mapgrid[row][col].terrainbyte;
+        mpfile[row * game.mapwidth + col + 6] = game.grid[row][col].terrainbyte;
         mpfile[2 * game.mapsize + row * game.mapwidth + col + 6] = 1;
       }
     }
@@ -1125,9 +1006,9 @@ function regioncheck() {
   // check that boundary and only boundary are region 0
   for (let row = 0; row < game.mapheight; row++) {
     for (let col = 0; col < game.mapwidth; col++) {
-      mapgrid[row][col].parent = null;
+      game.grid[row][col].parent = null;
       if (
-        (mapgrid[row][col].pathregion == 0) !=
+        (game.grid[row][col].pathregion == 0) !=
         (row == 0 ||
           col == 0 ||
           row == game.mapheight - 1 ||
@@ -1142,14 +1023,14 @@ function regioncheck() {
   let regions = [];
   for (let row = 1; row < game.mapheight - 1; row++) {
     for (let col = 1; col < game.mapwidth - 1; col++) {
-      curr_tile = mapgrid[row][col];
+      curr_tile = game.grid[row][col];
       //console.log(`Regions: ${regions.length} Tile (${row}, ${col}) iswater: ${curr_tile.iswater}, region: ${curr_tile.pathregion}`);
       // check W, NW, N, NE tiles if same region, then copy parent
       adjtile = [
-        mapgrid[row][col - 1],
-        mapgrid[row - 1][col - 1],
-        mapgrid[row - 1][col],
-        mapgrid[row - 1][col + 1],
+        game.grid[row][col - 1],
+        game.grid[row - 1][col - 1],
+        game.grid[row - 1][col],
+        game.grid[row - 1][col + 1],
       ];
       for (let x = 0; x < adjtile.length; x++) {
         if (

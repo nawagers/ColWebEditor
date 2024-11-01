@@ -3,7 +3,72 @@
 // Attribution appreciated
 // Latest update 2024/10/25
 
+class RouteTile {
+    //#topleft = null;
+    //#bottomright = null;
+    constructor(connections) {
+        this.N = Boolean(connections & 0x01);
+        this.NE = Boolean(connections & 0x02);
+        this.E = Boolean(connections & 0x04);
+        this.SE = Boolean(connections & 0x08);
+        this.S = Boolean(connections & 0x10);
+        this.SW = Boolean(connections & 0x20);
+        this.W = Boolean(connections & 0x40);
+        this.NW = Boolean(connections & 0x80);
 
+        // computed game state
+        this.row = null;
+        this.col = null;
+        this.topleft = null;
+        this.bottomright = null;
+        this.tiles = [];
+        this.anchor = null;
+        this.water = null;
+    }
+    // set topleft(tile) {
+    //     this.#topleft = tile;
+    //     if (this.#bottomright != null) {
+    //         console.log('both set, update anchor');
+    //     }
+    // }
+    // set bottomright(tile) {
+    //     this.#bottomright = tile;
+    //     if (this.#topleft != null) {
+    //         console.log('both set, update anchor');
+    //     }
+    // }
+    // get anchor() {
+    //     if (topleft == null || bottomright == null) {
+    //         return null;
+    //     }
+    //     offsets = [[1, 1], [1, 2], [2, 1], [2, 2]];
+    //     for ([x, y] in offsets) {
+    //         if (this.topleft.row + x > this.bottomright.row ||
+    //             this.topleft.col + y > this.bottomright.col) {
+    //             continue;
+    //         }
+
+    //     }
+    // }
+    // set anchor(tile) {
+    //     this._anchor = tile;
+    // }
+    get routebyte() {
+        return (
+            this.N +
+            this.NE * 2 +
+            this.E * 4 +
+            this.SE * 8 +
+            this.S * 16 +
+            this.SW * 32 +
+            this.W * 64 +
+            this.NW * 128
+        );
+    }
+    toString() {
+        return this.routebyte.toString(16).toUpperCase().padStart(2, '0');
+    }
+}
 
 class Tile {
     constructor(terrain, mask, vis) {
@@ -41,6 +106,8 @@ class Tile {
         this.mission = null;
         this.modified = false;
         this.parent = null;
+        this.row = null;
+        this.col = null;
     }
     get terrainbyte() {
         return (
@@ -88,13 +155,10 @@ class Colony {
     constructor(bytes) {
         this.col = bytes[0];
         this.row = bytes[1];
-        console.log(`Position: (${this.row}, ${this.col})`);
         this.name = String.fromCharCode(...bytes.slice(0x02, 0x1A)).split('\0', 1)[0];
-        console.log(this.name);
         const powers = ["English", "French", "Spanish", "Dutch"];
         this.power = bytes[0x1A];
-        console.log(powers[this.power]);
-
+        console.log(`Loaded ${powers[this.power]} colony of ${this.name} at (${this.row}, ${this.col})`)
         // 0x1C has some flags
 
         this.population = bytes[0x1F];
@@ -166,6 +230,7 @@ class Building {
         this.spacing = unitspacing;
     }
 }
+
 class Gamestate {
     constructor(filebytes) {
         this.bytes = filebytes;
@@ -179,16 +244,92 @@ class Gamestate {
             (filebytes[this.tmapstart + 4 * this.mapsize + 0x264] & 0xf0) / 16;
         console.log(`Original prime: ${this.prime}, rumors: ${this.lcr}`);
         this.name = "COLONY00.SAV";
+        console.log(
+            `Colony offset:      0x${this.colstart.toString(16).padStart(4, "0")}`
+        );
+        console.log(
+            `Village offset: 0x${this.vilstart.toString(16).padStart(4, "0")} `
+        );
+        console.log(
+            `Terrain map offset: 0x${this.tmapstart.toString(16).padStart(4, "0")} `
+        );
+        console.log(
+            `Mask map offset: 0x${this.mmapstart.toString(16).padStart(4, "0")} `
+        );
+        console.log(
+            `Path map offset: 0x${this.pmapstart.toString(16).padStart(4, "0")} `
+        );
+        console.log(
+            `Sea routes offset: 0x${this.searoutestart.toString(16).padStart(4, "0")} `
+        );
+        console.log(
+            `Land routes offset: 0x${this.landroutestart.toString(16).padStart(4, "0")} `
+        );
+        this.grid = [];
+
+        for (let row = 0; row < this.mapheight; row++) {
+            let tilerow = [];
+            for (let col = 0; col < this.mapwidth; col++) {
+                let tmp_tile = new Tile(
+                    this.bytes[this.tmapstart + row * this.mapwidth + col],
+                    this.bytes[this.mmapstart + row * this.mapwidth + col],
+                    this.bytes[this.pmapstart + row * this.mapwidth + col]
+                );
+                tmp_tile.row = row;
+                tmp_tile.col = col;
+                tilerow.push(tmp_tile);
+            }
+            this.grid.push(tilerow);
+        }
+        this.colonies = [];
+        const powers = ["e", "f", "s", "d"];
+        const structure = ["colony", "stockade", "", "fort", "", "", "", "fortress"];
+        for (let i = 0; i < this.num_colonies; i++) {
+            // code to mark colonies in mapgrid
+
+            let address = this.colstart + i * 202;
+            let col = this.bytes[address];
+            let row = this.bytes[address + 1];
+            this.grid[row][col].colony =
+                powers[this.bytes[address + 0x1a]] +
+                structure[this.bytes[address + 0x84] & 0x7];
+            this.colonies.push(new Colony(this.bytes.slice(address, address + 202)));
+        }
+
+
+
+
+
     }
     get offsetbyte() {
         return ((this.lcr * 16) & 0xf0) + (this.prime & 0x0f);
     }
+    get colstart() {
+        return 0x186;
+    }
+    get unitstart() {
+        return 0x186 + this.num_colonies * 0x1c;
+    }
+    get powerstart() {
+        return 0xca * this.num_colonies + 0x1c * this.num_units + 0x186;
+    }
+    get vilstart() {
+        return 0xca * this.num_colonies + 0x1c * this.num_units + 0x676;
+    }
+    get tribestart() {
+        return (
+            0x676 +
+            this.num_colonies * 0xca +
+            this.num_units * 0x1c +
+            this.num_villages * 0x12
+        );
+    }
     get tmapstart() {
         return (
             0xbbd +
-            this.num_colonies * 202 +
-            this.num_units * 28 +
-            this.num_villages * 18
+            this.num_colonies * 0xca +
+            this.num_units * 0x1c +
+            this.num_villages * 0x12
         );
     }
     get mmapstart() {
@@ -197,19 +338,248 @@ class Gamestate {
     get pmapstart() {
         return this.tmapstart + 2 * this.mapsize;
     }
-    get colstart() {
-        return 0x186;
+    get smapstart() {
+        return this.tmapstart + 3 * this.mapsize;
     }
-    get powerstart(){
-        return 0xca * this.num_colonies + 0x1c * this.num_units + 0x186;
-    }
-    get vilstart() {
-        return 0xca * this.num_colonies + 0x1c * this.num_units + 0x676;
-    }
+
+
     get mapsize() {
         return this.mapwidth * this.mapheight;
     }
+    get searoutestart() {
+        return (
+            0xbbd +
+            this.num_colonies * 0xca +
+            this.num_units * 0x1c +
+            this.num_villages * 0x12 +
+            this.mapsize * 4
+        );
+    }
+    get landroutestart() {
+        return (
+            0xbbd +
+            this.num_colonies * 0xca +
+            this.num_units * 0x1c +
+            this.num_villages * 0x12 +
+            this.mapsize * 4 +
+            Math.ceil(this.mapwidth / 4) *
+            Math.ceil(this.mapheight / 4)
+        );
+    }
+    get landroutegrid() {
+        console.log("Computing land routing");
+        function isconnected(origin, dest) {
+            function neighbors(tile) {
+                let dir = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
+                let tile_neighbors = []
+                dir.forEach(([row, col]) => {
+                    if (tile.row + row > 0 && tile.col + col >= 0 &&
+                        tile.row + row + 1 < game.mapheight && tile.col + col < game.mapwidth) {
+                        if (!game.grid[tile.row + row][tile.col + col].iswater) {
+
+                            tile_neighbors.push(game.grid[tile.row + row][tile.col + col])
+                        }
+                    }
+                }
+                )
+                return tile_neighbors;
+            }
+            let routes = new Set();
+            routes.add(origin);
+            for (let ii = 0; ii < 6; ii++) {
+                let new_conn = new Set();
+                routes.forEach((elem) => { neighbors(elem).forEach((tile) => { new_conn.add(tile) }); });
+                routes = routes.union(new_conn);
+                if (routes.has(dest)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        this.landgrid = [];
+        for (let row = 0; row < Math.ceil(this.mapheight / 4); row++) {
+            let tilerow = [];
+            for (let col = 0; col < Math.ceil(this.mapwidth / 4); col++) {
+                let tmp_tile = new RouteTile(this.bytes[this.landroutestart + col * Math.ceil(this.mapheight / 4) + row]);
+                tmp_tile.topleft = this.grid[row * 4][col * 4];
+                tmp_tile.bottomright = this.grid[Math.min(row * 4 + 3, this.mapheight)][Math.min(col * 4 + 3, this.mapwidth)];
+                tmp_tile.row = row;
+                tmp_tile.col = col;
+                tmp_tile.water = false;
+                for (let i = 1; i < 3; i++) {
+                    for (let j = 1; j < 3; j++) {
+                        if (row * 4 + j < this.mapheight && col * 4 + i < this.mapwidth) {
+                            if (tmp_tile.anchor == null && !this.grid[row * 4 + j][col * 4 + i].iswater) {
+                                tmp_tile.anchor = this.grid[row * 4 + j][col * 4 + i];
+                            }
+                        }
+                    }
+                }
+                tilerow.push(tmp_tile);
+                //tilerow.push(this.bytes[this.landroutestart + col * Math.ceil(this.mapheight / 4) + row]);
+            }
+            this.landgrid.push(tilerow);
+        }
+        console.log('Original Land Grid');
+        this.landgrid.forEach((row) => { console.log(row.join(' ')) });
+
+        //reset grid
+        for (let row = 0; row < Math.ceil(this.mapheight / 4); row++) {
+            for (let col = 0; col < Math.ceil(this.mapwidth / 4); col++) {
+                ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'].forEach((dir) => this.landgrid[row][col][dir] = false)
+            }
+        }
+
+        let starttime = performance.now();
+        let dirs = [[-1, 0, "N", "S"], [-1, 1, "NE", "SW"], [0, 1, "E", "W"], [1, 1, "SE", "NW"]];
+        for (let row = 0; row < Math.ceil(this.mapheight / 4); row++) {
+            //console.log(`Row ${row}`);
+            for (let col = 0; col < Math.ceil(this.mapwidth / 4); col++) {
+                //console.log(`Col ${col}`);
+                if (this.landgrid[row][col].anchor == null) {
+                    continue;
+                }
+                //console.log(this.landgrid[row][col].anchor.row,this.landgrid[row][col].anchor.col);
+                let rowshift, colshift, oridir, destdir;
+                for ([rowshift, colshift, oridir, destdir] of dirs) {
+                    if (row + rowshift < 0 || col + colshift >= Math.ceil(this.mapwidth / 4) || row + rowshift >= Math.ceil(this.mapheight / 4)) {
+                        continue;
+                    }
+                    let dest = this.landgrid[row + rowshift][col + colshift].anchor;
+                    if (dest == null) {
+                        continue;
+                    }
+                    if (isconnected(this.landgrid[row][col].anchor, dest)) {
+                        // connect
+                        this.landgrid[row][col][oridir] = true;
+                        this.landgrid[row + rowshift][col + colshift][destdir] = true;
+                    }
+                }
+
+            }
+        }
+
+        console.log('Computed Land Grid');
+        this.landgrid.forEach((row) => { console.log(row.join(' ')) });
+
+        let result = new Uint8Array(Math.ceil(this.mapheight / 4) * Math.ceil(this.mapwidth / 4));
+        for (let row = 0; row < Math.ceil(this.mapheight / 4); row++) {
+            for (let col = 0; col < Math.ceil(this.mapwidth / 4); col++) {
+                result[col * Math.ceil(this.mapheight / 4) + row] = this.landgrid[row][col].routebyte;
+            }
+        }
+        return result;
+    }
+
+    get searoutegrid() {
+
+        function isconnected(origin, dest) {
+            function neighbors(tile) {
+                let dir = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
+                let tile_neighbors = []
+                dir.forEach(([row, col]) => {
+                    if (tile.row + row > 0 && tile.col + col >= 0 &&
+                        tile.row + row + 1 < game.mapheight && tile.col + col < game.mapwidth) {
+                        if (game.grid[tile.row + row][tile.col + col].iswater) {
+                            tile_neighbors.push(game.grid[tile.row + row][tile.col + col])
+                        }
+                    }
+                }
+                )
+                return tile_neighbors;
+            }
+            let routes = new Set();
+            routes.add(origin);
+            for (let ii = 0; ii < 6; ii++) {
+                let new_conn = new Set();
+                routes.forEach((elem) => { neighbors(elem).forEach((tile) => { new_conn.add(tile) }); });
+                routes = routes.union(new_conn);
+                if (routes.has(dest)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        this.seagrid = [];
+        for (let row = 0; row < Math.ceil(this.mapheight / 4); row++) {
+            let tilerow = [];
+            for (let col = 0; col < Math.ceil(this.mapwidth / 4); col++) {
+                let tmp_tile = new RouteTile(this.bytes[this.searoutestart + col * Math.ceil(this.mapheight / 4) + row]);
+                tmp_tile.topleft = this.grid[row * 4][col * 4];
+                tmp_tile.bottomright = this.grid[Math.min(row * 4 + 3, this.mapheight)][Math.min(col * 4 + 3, this.mapwidth)];
+                tmp_tile.row = row;
+                tmp_tile.col = col;
+                tmp_tile.water = false;
+                for (let i = 1; i < 3; i++) {
+                    for (let j = 1; j < 3; j++) {
+                        if (row * 4 + j < this.mapheight && col * 4 + i < this.mapwidth) {
+                            if (tmp_tile.anchor == null &&
+                                this.grid[row * 4 + j][col * 4 + i].iswater &&
+                                this.grid[row * 4 + j][col * 4 + i].pathregion == 1) {
+                                tmp_tile.anchor = this.grid[row * 4 + j][col * 4 + i];
+                            }
+                        }
+                    }
+                }
+                tilerow.push(tmp_tile);
+                //tilerow.push(this.bytes[this.landroutestart + col * Math.ceil(this.mapheight / 4) + row]);
+            }
+            this.seagrid.push(tilerow);
+        }
+
+        console.log('Original Sea Grid');
+        this.seagrid.forEach((row) => { console.log(row.join(' ')) });
+
+        //reset grid
+        for (let row = 0; row < Math.ceil(this.mapheight / 4); row++) {
+            for (let col = 0; col < Math.ceil(this.mapwidth / 4); col++) {
+                ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'].forEach((dir) => this.seagrid[row][col][dir] = false)
+            }
+        }
+
+        let starttime = performance.now();
+        let dirs = [[-1, 0, "N", "S"], [-1, 1, "NE", "SW"], [0, 1, "E", "W"], [1, 1, "SE", "NW"]];
+        for (let row = 0; row < Math.ceil(this.mapheight / 4); row++) {
+            //console.log(`Row ${row}`);
+            for (let col = 0; col < Math.ceil(this.mapwidth / 4); col++) {
+                //console.log(`Col ${col}`);
+                if (this.seagrid[row][col].anchor == null) {
+                    continue;
+                }
+                //console.log(this.seagrid[row][col].anchor.row,this.seagrid[row][col].anchor.col);
+                let rowshift, colshift, oridir, destdir;
+                for ([rowshift, colshift, oridir, destdir] of dirs) {
+                    if (row + rowshift < 0 || col + colshift >= Math.ceil(this.mapwidth / 4) || row + rowshift >= Math.ceil(this.mapheight / 4)) {
+                        continue;
+                    }
+                    let dest = this.seagrid[row + rowshift][col + colshift].anchor;
+                    if (dest == null) {
+                        continue;
+                    }
+                    if (isconnected(this.seagrid[row][col].anchor, dest)) {
+                        // connect
+                        this.seagrid[row][col][oridir] = true;
+                        this.seagrid[row + rowshift][col + colshift][destdir] = true;
+                    }
+                }
+
+            }
+        }
+        console.log('Computed Sea Grid');
+        this.seagrid.forEach((row) => { console.log(row.join(' ')) });
+
+        let result = new Uint8Array(Math.ceil(this.mapheight / 4) * Math.ceil(this.mapwidth / 4));
+        for (let row = 0; row < Math.ceil(this.mapheight / 4); row++) {
+            for (let col = 0; col < Math.ceil(this.mapwidth / 4); col++) {
+                result[col * Math.ceil(this.mapheight / 4) + row] = this.seagrid[row][col].routebyte;
+            }
+        }
+        return result;
+    }
 }
+
 
 // Constants
 
@@ -271,4 +641,18 @@ const BUILDINGGROUPS = new Map([
     ["rum", ["distillershouse", "distillersshop", "rumfactory"]],
     ["tobacco", ["tobacconistshouse", "tobacconistsshop", "cigarfactory"]],
     ["townhall", ["townhall"]]
+]);
+
+const PRIMEPATTERN = new Map([
+    [0, [0, 10, 17, 27, 34, 40, 51, 57]],
+    [1, [4, 14, 21, 31, 38, 44, 55, 61]],
+    [2, [2, 8, 19, 25, 32, 42, 49, 59]],
+    [3, [6, 12, 23, 29, 36, 46, 53, 63]],
+]);
+
+const RUMORPATTERN = new Map([
+    [1, [36, 53, 70, 87]],
+    [2, [10, 27, 104, 121]],
+    [3, [44, 61, 78, 95]],
+    [0, [2, 19, 96, 113]],
 ]);
