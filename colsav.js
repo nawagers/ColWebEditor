@@ -4,8 +4,6 @@
 // Latest update 2024/10/25
 
 class RouteTile {
-    //#topleft = null;
-    //#bottomright = null;
     constructor(connections) {
         this.N = Boolean(connections & 0x01);
         this.NE = Boolean(connections & 0x02);
@@ -25,34 +23,7 @@ class RouteTile {
         this.anchor = null;
         this.water = null;
     }
-    // set topleft(tile) {
-    //     this.#topleft = tile;
-    //     if (this.#bottomright != null) {
-    //         console.log('both set, update anchor');
-    //     }
-    // }
-    // set bottomright(tile) {
-    //     this.#bottomright = tile;
-    //     if (this.#topleft != null) {
-    //         console.log('both set, update anchor');
-    //     }
-    // }
-    // get anchor() {
-    //     if (topleft == null || bottomright == null) {
-    //         return null;
-    //     }
-    //     offsets = [[1, 1], [1, 2], [2, 1], [2, 2]];
-    //     for ([x, y] in offsets) {
-    //         if (this.topleft.row + x > this.bottomright.row ||
-    //             this.topleft.col + y > this.bottomright.col) {
-    //             continue;
-    //         }
 
-    //     }
-    // }
-    // set anchor(tile) {
-    //     this._anchor = tile;
-    // }
     get routebyte() {
         return (
             this.N +
@@ -341,8 +312,6 @@ class Gamestate {
     get smapstart() {
         return this.tmapstart + 3 * this.mapsize;
     }
-
-
     get mapsize() {
         return this.mapwidth * this.mapheight;
     }
@@ -471,7 +440,6 @@ class Gamestate {
         }
         return result;
     }
-
     get searoutegrid() {
 
         function isconnected(origin, dest) {
@@ -577,6 +545,157 @@ class Gamestate {
             }
         }
         return result;
+    }
+    regioncheck() {
+        function getroot(tile) {
+            if (tile.parent == null) {
+                return tile;
+            }
+            return getroot(tile.parent);
+        }
+        function updateparent(tile1, tile2) {
+            if (!(getroot(tile1) === getroot(tile2))) {
+                getroot(tile2).parent = getroot(tile1);
+            }
+        }
+        // reset all parents to null
+        // check that boundary and only boundary are region 0
+        for (let row = 0; row < game.mapheight; row++) {
+            for (let col = 0; col < game.mapwidth; col++) {
+                game.grid[row][col].parent = null;
+                if (
+                    (game.grid[row][col].pathregion == 0) !=
+                    (row == 0 ||
+                        col == 0 ||
+                        row == game.mapheight - 1 ||
+                        col == game.mapwidth - 1)
+                ) {
+                    console.log(`Bad path region 0 at (${row}, ${col})`);
+                    return false;
+                }
+            }
+        }
+
+        let regions = [];
+        for (let row = 1; row < game.mapheight - 1; row++) {
+            for (let col = 1; col < game.mapwidth - 1; col++) {
+                curr_tile = game.grid[row][col];
+                //console.log(`Regions: ${regions.length} Tile (${row}, ${col}) iswater: ${curr_tile.iswater}, region: ${curr_tile.pathregion}`);
+                // check W, NW, N, NE tiles if same region, then copy parent
+                adjtile = [
+                    game.grid[row][col - 1],
+                    game.grid[row - 1][col - 1],
+                    game.grid[row - 1][col],
+                    game.grid[row - 1][col + 1],
+                ];
+                for (let x = 0; x < adjtile.length; x++) {
+                    if (
+                        curr_tile.iswater != adjtile[x].iswater ||
+                        adjtile[x].pathregion == 0
+                    ) {
+                        //console.log((`Different land types at (${row}, ${col})`))
+                        continue;
+                    }
+                    if (curr_tile.pathregion != adjtile[x].pathregion) {
+                        console.log(`Mismatched path regions at (${row}, ${col})`);
+                        return false;
+                    }
+                    if (curr_tile.parent != null) {
+                        updateparent(curr_tile, adjtile[x]);
+                    } else {
+                        curr_tile.parent = getroot(adjtile[x]);
+                    }
+                }
+
+                // else new parent
+                if (curr_tile.parent == null) {
+                    regions.push(curr_tile);
+                }
+            }
+        }
+
+        regions = regions.filter((reg) => reg.parent == null);
+        console.log(`Found ${regions.length} disjoint regions`);
+        regions = regions.filter((reg) => reg.pathregion != 15);
+        for (let i = 0; i < regions.length - 1; i++) {
+            for (let j = i + 1; j < regions.length; j++) {
+                //console.log(`Comparing region ${i} to ${j}`);
+                if (
+                    regions[i].iswater == regions[j].iswater &&
+                    regions[i].pathregion == regions[j].pathregion
+                ) {
+                    console.log(
+                        `${regions[i].iswater ? "Water" : "Land"} region ${regions[i].pathregion
+                        } is disjoint`
+                    );
+                    return false;
+                }
+            }
+        }
+        console.log("Regions OK");
+        return true;
+    }
+    offshorefish() {
+        console.log("Hiding offshore fish");
+
+        for (let row = 1; row < this.mapheight - 1; row++) {
+            for (let col = 1; col < this.mapwidth - 1; col++) {
+                curr_tile = this.grid[row][col];
+                if (curr_tile.base == 25) {
+                    if (
+                        PRIMEPATTERN
+                            .get(row % 4)
+                            .includes((col + 4 * this.prime + Math.floor(row / 4) * 12) % 64)
+                    ) {
+                        let nearland = false;
+                        for (
+                            let lrow = Math.max(row - 2, 1);
+                            lrow < Math.min(row + 3, this.mapheight - 1);
+                            lrow++
+                        ) {
+                            for (
+                                let lcol = Math.max(col - 2, 1);
+                                lcol < Math.min(col + 3, this.mapwidth - 1);
+                                lcol++
+                            ) {
+                                if (!this.grid[lrow][lcol].iswater) {
+                                    nearland = true;
+                                }
+                            }
+                        }
+                        if (!nearland && !curr_tile.depleted) {
+                            curr_tile.depleted = true;
+                            curr_tile.modified = true;
+                        }
+                    } else {
+                        if (curr_tile.depleted) {
+                            curr_tile.depleted = false;
+                            curr_tile.modified = true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    resetrumors() {
+        for (let row = 1; row < this.mapheight - 1; row++) {
+            for (let col = 1; col < this.mapwidth - 1; col++) {
+                if (
+                    RUMORPATTERN
+                        .get(row % 4)
+                        .includes(
+                            (col + 64 * this.lcr + 68 * this.prime + Math.floor(row / 4) * 12) %
+                            128
+                        ) &&
+                    !curr_tile.iswater &&
+                    this.grid[row][col].explorer != 0x0f
+                ) {
+                    gathisme.grid[row][col].explorer = 0x0f;
+                    this.grid[row][col].modified = true;
+                }
+            }
+        }
+
     }
 }
 

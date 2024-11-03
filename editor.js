@@ -194,7 +194,7 @@ function create_colony_controls() {
       horiz += 400;
     }
     radGroup.position(horiz, vert += 30);
-    radGroup.mouseClicked(colonybuildings);
+    radGroup.mouseClicked(updatebldgs);
     colony_controls.set(name, radGroup);
   }
 
@@ -508,7 +508,7 @@ function fileread(data, filename) {
   setmapview();
 }
 
-function colonybuildings() {
+function updatebldgs() {
   console.log("adjust colony options");
   curr_colony = game.colonies[int(colony_controls.get("colonyselect").selected())];
   curr_colony.modified = true;
@@ -806,11 +806,11 @@ function drawMap() {
       }
     }
   }
-  for (let row = 0; row < Math.ceil(game.mapheight / 4); row++) {
-    for (let col = 0; col < Math.ceil(game.mapwidth / 4); col++) {
-      image(units.get("tilegrid"), 128 * col, 128 * row);
-    }
-  }
+  // for (let row = 0; row < Math.ceil(game.mapheight / 4); row++) {
+  //   for (let col = 0; col < Math.ceil(game.mapwidth / 4); col++) {
+  //     image(units.get("tilegrid"), 128 * col, 128 * row);
+  //   }
+  // }
 
 }
 
@@ -818,12 +818,12 @@ function keyPressed() {
   if (keyCode === LEFT_ARROW && keyIsDown(CONTROL) && game != null) {
     game.prime += 15;
     game.prime %= 16;
-    offshorefish();
+    game.offshorefish();
     redraw();
   } else if (keyCode === RIGHT_ARROW && keyIsDown(CONTROL) && game != null) {
     game.prime += 1;
     game.prime %= 16;
-    offshorefish();
+    game.offshorefish();
     redraw();
   } else if (keyCode === UP_ARROW && keyIsDown(CONTROL) && game != null) {
     game.lcr += 1;
@@ -857,69 +857,8 @@ function gossip() {
   if (game == null) {
     return;
   }
-  for (let row = 1; row < game.mapheight - 1; row++) {
-    for (let col = 1; col < game.mapwidth - 1; col++) {
-      if (
-        RUMORPATTERN
-          .get(row % 4)
-          .includes(
-            (col + 64 * game.lcr + 68 * game.prime + Math.floor(row / 4) * 12) %
-            128
-          ) &&
-        !curr_tile.iswater &&
-        game.grid[row][col].explorer != 0x0f
-      ) {
-        game.grid[row][col].explorer = 0x0f;
-        game.grid[row][col].modified = true;
-      }
-    }
-  }
+  game.resetrumors();
   redraw();
-}
-
-function offshorefish() {
-  console.log("Hiding offshore fish");
-  if (game == null) {
-    return;
-  }
-  for (let row = 1; row < game.mapheight - 1; row++) {
-    for (let col = 1; col < game.mapwidth - 1; col++) {
-      curr_tile = game.grid[row][col];
-      if (curr_tile.base == 25) {
-        if (
-          PRIMEPATTERN
-            .get(row % 4)
-            .includes((col + 4 * game.prime + Math.floor(row / 4) * 12) % 64)
-        ) {
-          let nearland = false;
-          for (
-            let lrow = Math.max(row - 2, 1);
-            lrow < Math.min(row + 3, game.mapheight - 1);
-            lrow++
-          ) {
-            for (
-              let lcol = Math.max(col - 2, 1);
-              lcol < Math.min(col + 3, game.mapwidth - 1);
-              lcol++
-            ) {
-              if (!game.grid[lrow][lcol].iswater) {
-                nearland = true;
-              }
-            }
-          }
-          if (!nearland && !curr_tile.depleted) {
-            curr_tile.depleted = true;
-            curr_tile.modified = true;
-          }
-        } else {
-          if (curr_tile.depleted) {
-            curr_tile.depleted = false;
-            curr_tile.modified = true;
-          }
-        }
-      }
-    }
-  }
 }
 
 function regionmode() {
@@ -990,93 +929,4 @@ function Export() {
   saveByteArray([mpfile], "MYCOLMAP.MP");
 }
 
-function regioncheck() {
-  function getroot(tile) {
-    if (tile.parent == null) {
-      return tile;
-    }
-    return getroot(tile.parent);
-  }
-  function updateparent(tile1, tile2) {
-    if (!(getroot(tile1) === getroot(tile2))) {
-      getroot(tile2).parent = getroot(tile1);
-    }
-  }
-  // reset all parents to null
-  // check that boundary and only boundary are region 0
-  for (let row = 0; row < game.mapheight; row++) {
-    for (let col = 0; col < game.mapwidth; col++) {
-      game.grid[row][col].parent = null;
-      if (
-        (game.grid[row][col].pathregion == 0) !=
-        (row == 0 ||
-          col == 0 ||
-          row == game.mapheight - 1 ||
-          col == game.mapwidth - 1)
-      ) {
-        console.log(`Bad path region 0 at (${row}, ${col})`);
-        return false;
-      }
-    }
-  }
-
-  let regions = [];
-  for (let row = 1; row < game.mapheight - 1; row++) {
-    for (let col = 1; col < game.mapwidth - 1; col++) {
-      curr_tile = game.grid[row][col];
-      //console.log(`Regions: ${regions.length} Tile (${row}, ${col}) iswater: ${curr_tile.iswater}, region: ${curr_tile.pathregion}`);
-      // check W, NW, N, NE tiles if same region, then copy parent
-      adjtile = [
-        game.grid[row][col - 1],
-        game.grid[row - 1][col - 1],
-        game.grid[row - 1][col],
-        game.grid[row - 1][col + 1],
-      ];
-      for (let x = 0; x < adjtile.length; x++) {
-        if (
-          curr_tile.iswater != adjtile[x].iswater ||
-          adjtile[x].pathregion == 0
-        ) {
-          //console.log((`Different land types at (${row}, ${col})`))
-          continue;
-        }
-        if (curr_tile.pathregion != adjtile[x].pathregion) {
-          console.log(`Mismatched path regions at (${row}, ${col})`);
-          return false;
-        }
-        if (curr_tile.parent != null) {
-          updateparent(curr_tile, adjtile[x]);
-        } else {
-          curr_tile.parent = getroot(adjtile[x]);
-        }
-      }
-
-      // else new parent
-      if (curr_tile.parent == null) {
-        regions.push(curr_tile);
-      }
-    }
-  }
-
-  regions = regions.filter((reg) => reg.parent == null);
-  console.log(`Found ${regions.length} disjoint regions`);
-  regions = regions.filter((reg) => reg.pathregion != 15);
-  for (let i = 0; i < regions.length - 1; i++) {
-    for (let j = i + 1; j < regions.length; j++) {
-      //console.log(`Comparing region ${i} to ${j}`);
-      if (
-        regions[i].iswater == regions[j].iswater &&
-        regions[i].pathregion == regions[j].pathregion
-      ) {
-        console.log(
-          `${regions[i].iswater ? "Water" : "Land"} region ${regions[i].pathregion
-          } is disjoint`
-        );
-        return false;
-      }
-    }
-  }
-  console.log("Regions OK");
-  return true;
-}
 
