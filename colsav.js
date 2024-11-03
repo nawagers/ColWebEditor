@@ -3,7 +3,43 @@
 // Attribution appreciated
 // Latest update 2024/10/25
 
+class RouteTile {
+    constructor(connections) {
+        this.N = Boolean(connections & 0x01);
+        this.NE = Boolean(connections & 0x02);
+        this.E = Boolean(connections & 0x04);
+        this.SE = Boolean(connections & 0x08);
+        this.S = Boolean(connections & 0x10);
+        this.SW = Boolean(connections & 0x20);
+        this.W = Boolean(connections & 0x40);
+        this.NW = Boolean(connections & 0x80);
 
+        // computed game state
+        this.row = null;
+        this.col = null;
+        this.topleft = null;
+        this.bottomright = null;
+        this.tiles = [];
+        this.anchor = null;
+        this.water = null;
+    }
+
+    get routebyte() {
+        return (
+            this.N +
+            this.NE * 2 +
+            this.E * 4 +
+            this.SE * 8 +
+            this.S * 16 +
+            this.SW * 32 +
+            this.W * 64 +
+            this.NW * 128
+        );
+    }
+    toString() {
+        return this.routebyte.toString(16).toUpperCase().padStart(2, '0');
+    }
+}
 
 class Tile {
     constructor(terrain, mask, vis) {
@@ -35,8 +71,14 @@ class Tile {
         // computed game state
         this.colony = null;
         this.village = null;
+        this.scouted = false;
+        this.trained = false;
+        this.capital = false;
+        this.mission = null;
         this.modified = false;
         this.parent = null;
+        this.row = null;
+        this.col = null;
     }
     get terrainbyte() {
         return (
@@ -84,13 +126,10 @@ class Colony {
     constructor(bytes) {
         this.col = bytes[0];
         this.row = bytes[1];
-        console.log(`Position: (${this.row}, ${this.col})`);
         this.name = String.fromCharCode(...bytes.slice(0x02, 0x1A)).split('\0', 1)[0];
-        console.log(this.name);
         const powers = ["English", "French", "Spanish", "Dutch"];
         this.power = bytes[0x1A];
-        console.log(powers[this.power]);
-
+        console.log(`Loaded ${powers[this.power]} colony of ${this.name} at (${this.row}, ${this.col})`)
         // 0x1C has some flags
 
         this.population = bytes[0x1F];
@@ -162,6 +201,7 @@ class Building {
         this.spacing = unitspacing;
     }
 }
+
 class Gamestate {
     constructor(filebytes) {
         this.bytes = filebytes;
@@ -175,16 +215,92 @@ class Gamestate {
             (filebytes[this.tmapstart + 4 * this.mapsize + 0x264] & 0xf0) / 16;
         console.log(`Original prime: ${this.prime}, rumors: ${this.lcr}`);
         this.name = "COLONY00.SAV";
+        console.log(
+            `Colony offset:      0x${this.colstart.toString(16).padStart(4, "0")}`
+        );
+        console.log(
+            `Village offset: 0x${this.vilstart.toString(16).padStart(4, "0")} `
+        );
+        console.log(
+            `Terrain map offset: 0x${this.tmapstart.toString(16).padStart(4, "0")} `
+        );
+        console.log(
+            `Mask map offset: 0x${this.mmapstart.toString(16).padStart(4, "0")} `
+        );
+        console.log(
+            `Path map offset: 0x${this.pmapstart.toString(16).padStart(4, "0")} `
+        );
+        console.log(
+            `Sea routes offset: 0x${this.searoutestart.toString(16).padStart(4, "0")} `
+        );
+        console.log(
+            `Land routes offset: 0x${this.landroutestart.toString(16).padStart(4, "0")} `
+        );
+        this.grid = [];
+
+        for (let row = 0; row < this.mapheight; row++) {
+            let tilerow = [];
+            for (let col = 0; col < this.mapwidth; col++) {
+                let tmp_tile = new Tile(
+                    this.bytes[this.tmapstart + row * this.mapwidth + col],
+                    this.bytes[this.mmapstart + row * this.mapwidth + col],
+                    this.bytes[this.pmapstart + row * this.mapwidth + col]
+                );
+                tmp_tile.row = row;
+                tmp_tile.col = col;
+                tilerow.push(tmp_tile);
+            }
+            this.grid.push(tilerow);
+        }
+        this.colonies = [];
+        const powers = ["e", "f", "s", "d"];
+        const structure = ["colony", "stockade", "", "fort", "", "", "", "fortress"];
+        for (let i = 0; i < this.num_colonies; i++) {
+            // code to mark colonies in mapgrid
+
+            let address = this.colstart + i * 202;
+            let col = this.bytes[address];
+            let row = this.bytes[address + 1];
+            this.grid[row][col].colony =
+                powers[this.bytes[address + 0x1a]] +
+                structure[this.bytes[address + 0x84] & 0x7];
+            this.colonies.push(new Colony(this.bytes.slice(address, address + 202)));
+        }
+
+
+
+
+
     }
     get offsetbyte() {
         return ((this.lcr * 16) & 0xf0) + (this.prime & 0x0f);
     }
+    get colstart() {
+        return 0x186;
+    }
+    get unitstart() {
+        return 0x186 + this.num_colonies * 0x1c;
+    }
+    get powerstart() {
+        return 0xca * this.num_colonies + 0x1c * this.num_units + 0x186;
+    }
+    get vilstart() {
+        return 0xca * this.num_colonies + 0x1c * this.num_units + 0x676;
+    }
+    get tribestart() {
+        return (
+            0x676 +
+            this.num_colonies * 0xca +
+            this.num_units * 0x1c +
+            this.num_villages * 0x12
+        );
+    }
     get tmapstart() {
         return (
             0xbbd +
-            this.num_colonies * 202 +
-            this.num_units * 28 +
-            this.num_villages * 18
+            this.num_colonies * 0xca +
+            this.num_units * 0x1c +
+            this.num_villages * 0x12
         );
     }
     get mmapstart() {
@@ -193,16 +309,396 @@ class Gamestate {
     get pmapstart() {
         return this.tmapstart + 2 * this.mapsize;
     }
-    get colstart() {
-        return 0x186;
-    }
-    get vilstart() {
-        return 0xca * this.num_colonies + 0x1c * this.num_units + 0x676;
+    get smapstart() {
+        return this.tmapstart + 3 * this.mapsize;
     }
     get mapsize() {
         return this.mapwidth * this.mapheight;
     }
+    get searoutestart() {
+        return (
+            0xbbd +
+            this.num_colonies * 0xca +
+            this.num_units * 0x1c +
+            this.num_villages * 0x12 +
+            this.mapsize * 4
+        );
+    }
+    get landroutestart() {
+        return (
+            0xbbd +
+            this.num_colonies * 0xca +
+            this.num_units * 0x1c +
+            this.num_villages * 0x12 +
+            this.mapsize * 4 +
+            Math.ceil(this.mapwidth / 4) *
+            Math.ceil(this.mapheight / 4)
+        );
+    }
+    get landroutegrid() {
+        console.log("Computing land routing");
+        function isconnected(origin, dest) {
+            function neighbors(tile) {
+                let dir = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
+                let tile_neighbors = []
+                dir.forEach(([row, col]) => {
+                    if (tile.row + row > 0 && tile.col + col >= 0 &&
+                        tile.row + row + 1 < game.mapheight && tile.col + col < game.mapwidth) {
+                        if (!game.grid[tile.row + row][tile.col + col].iswater) {
+
+                            tile_neighbors.push(game.grid[tile.row + row][tile.col + col])
+                        }
+                    }
+                }
+                )
+                return tile_neighbors;
+            }
+            let routes = new Set();
+            routes.add(origin);
+            for (let ii = 0; ii < 6; ii++) {
+                let new_conn = new Set();
+                routes.forEach((elem) => { neighbors(elem).forEach((tile) => { new_conn.add(tile) }); });
+                routes = routes.union(new_conn);
+                if (routes.has(dest)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        this.landgrid = [];
+        for (let row = 0; row < Math.ceil(this.mapheight / 4); row++) {
+            let tilerow = [];
+            for (let col = 0; col < Math.ceil(this.mapwidth / 4); col++) {
+                let tmp_tile = new RouteTile(this.bytes[this.landroutestart + col * Math.ceil(this.mapheight / 4) + row]);
+                tmp_tile.topleft = this.grid[row * 4][col * 4];
+                tmp_tile.bottomright = this.grid[Math.min(row * 4 + 3, this.mapheight)][Math.min(col * 4 + 3, this.mapwidth)];
+                tmp_tile.row = row;
+                tmp_tile.col = col;
+                tmp_tile.water = false;
+                for (let i = 1; i < 3; i++) {
+                    for (let j = 1; j < 3; j++) {
+                        if (row * 4 + j < this.mapheight && col * 4 + i < this.mapwidth) {
+                            if (tmp_tile.anchor == null && !this.grid[row * 4 + j][col * 4 + i].iswater) {
+                                tmp_tile.anchor = this.grid[row * 4 + j][col * 4 + i];
+                            }
+                        }
+                    }
+                }
+                tilerow.push(tmp_tile);
+                //tilerow.push(this.bytes[this.landroutestart + col * Math.ceil(this.mapheight / 4) + row]);
+            }
+            this.landgrid.push(tilerow);
+        }
+        console.log('Original Land Grid');
+        this.landgrid.forEach((row) => { console.log(row.join(' ')) });
+
+        //reset grid
+        for (let row = 0; row < Math.ceil(this.mapheight / 4); row++) {
+            for (let col = 0; col < Math.ceil(this.mapwidth / 4); col++) {
+                ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'].forEach((dir) => this.landgrid[row][col][dir] = false)
+            }
+        }
+
+        let starttime = performance.now();
+        let dirs = [[-1, 0, "N", "S"], [-1, 1, "NE", "SW"], [0, 1, "E", "W"], [1, 1, "SE", "NW"]];
+        for (let row = 0; row < Math.ceil(this.mapheight / 4); row++) {
+            //console.log(`Row ${row}`);
+            for (let col = 0; col < Math.ceil(this.mapwidth / 4); col++) {
+                //console.log(`Col ${col}`);
+                if (this.landgrid[row][col].anchor == null) {
+                    continue;
+                }
+                //console.log(this.landgrid[row][col].anchor.row,this.landgrid[row][col].anchor.col);
+                let rowshift, colshift, oridir, destdir;
+                for ([rowshift, colshift, oridir, destdir] of dirs) {
+                    if (row + rowshift < 0 || col + colshift >= Math.ceil(this.mapwidth / 4) || row + rowshift >= Math.ceil(this.mapheight / 4)) {
+                        continue;
+                    }
+                    let dest = this.landgrid[row + rowshift][col + colshift].anchor;
+                    if (dest == null) {
+                        continue;
+                    }
+                    if (isconnected(this.landgrid[row][col].anchor, dest)) {
+                        // connect
+                        this.landgrid[row][col][oridir] = true;
+                        this.landgrid[row + rowshift][col + colshift][destdir] = true;
+                    }
+                }
+
+            }
+        }
+
+        console.log('Computed Land Grid');
+        this.landgrid.forEach((row) => { console.log(row.join(' ')) });
+
+        let result = new Uint8Array(Math.ceil(this.mapheight / 4) * Math.ceil(this.mapwidth / 4));
+        for (let row = 0; row < Math.ceil(this.mapheight / 4); row++) {
+            for (let col = 0; col < Math.ceil(this.mapwidth / 4); col++) {
+                result[col * Math.ceil(this.mapheight / 4) + row] = this.landgrid[row][col].routebyte;
+            }
+        }
+        return result;
+    }
+    get searoutegrid() {
+
+        function isconnected(origin, dest) {
+            function neighbors(tile) {
+                let dir = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
+                let tile_neighbors = []
+                dir.forEach(([row, col]) => {
+                    if (tile.row + row > 0 && tile.col + col >= 0 &&
+                        tile.row + row + 1 < game.mapheight && tile.col + col < game.mapwidth) {
+                        if (game.grid[tile.row + row][tile.col + col].iswater) {
+                            tile_neighbors.push(game.grid[tile.row + row][tile.col + col])
+                        }
+                    }
+                }
+                )
+                return tile_neighbors;
+            }
+            let routes = new Set();
+            routes.add(origin);
+            for (let ii = 0; ii < 6; ii++) {
+                let new_conn = new Set();
+                routes.forEach((elem) => { neighbors(elem).forEach((tile) => { new_conn.add(tile) }); });
+                routes = routes.union(new_conn);
+                if (routes.has(dest)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        this.seagrid = [];
+        for (let row = 0; row < Math.ceil(this.mapheight / 4); row++) {
+            let tilerow = [];
+            for (let col = 0; col < Math.ceil(this.mapwidth / 4); col++) {
+                let tmp_tile = new RouteTile(this.bytes[this.searoutestart + col * Math.ceil(this.mapheight / 4) + row]);
+                tmp_tile.topleft = this.grid[row * 4][col * 4];
+                tmp_tile.bottomright = this.grid[Math.min(row * 4 + 3, this.mapheight)][Math.min(col * 4 + 3, this.mapwidth)];
+                tmp_tile.row = row;
+                tmp_tile.col = col;
+                tmp_tile.water = false;
+                for (let i = 1; i < 3; i++) {
+                    for (let j = 1; j < 3; j++) {
+                        if (row * 4 + j < this.mapheight && col * 4 + i < this.mapwidth) {
+                            if (tmp_tile.anchor == null &&
+                                this.grid[row * 4 + j][col * 4 + i].iswater &&
+                                this.grid[row * 4 + j][col * 4 + i].pathregion == 1) {
+                                tmp_tile.anchor = this.grid[row * 4 + j][col * 4 + i];
+                            }
+                        }
+                    }
+                }
+                tilerow.push(tmp_tile);
+                //tilerow.push(this.bytes[this.landroutestart + col * Math.ceil(this.mapheight / 4) + row]);
+            }
+            this.seagrid.push(tilerow);
+        }
+
+        console.log('Original Sea Grid');
+        this.seagrid.forEach((row) => { console.log(row.join(' ')) });
+
+        //reset grid
+        for (let row = 0; row < Math.ceil(this.mapheight / 4); row++) {
+            for (let col = 0; col < Math.ceil(this.mapwidth / 4); col++) {
+                ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'].forEach((dir) => this.seagrid[row][col][dir] = false)
+            }
+        }
+
+        let starttime = performance.now();
+        let dirs = [[-1, 0, "N", "S"], [-1, 1, "NE", "SW"], [0, 1, "E", "W"], [1, 1, "SE", "NW"]];
+        for (let row = 0; row < Math.ceil(this.mapheight / 4); row++) {
+            //console.log(`Row ${row}`);
+            for (let col = 0; col < Math.ceil(this.mapwidth / 4); col++) {
+                //console.log(`Col ${col}`);
+                if (this.seagrid[row][col].anchor == null) {
+                    continue;
+                }
+                //console.log(this.seagrid[row][col].anchor.row,this.seagrid[row][col].anchor.col);
+                let rowshift, colshift, oridir, destdir;
+                for ([rowshift, colshift, oridir, destdir] of dirs) {
+                    if (row + rowshift < 0 || col + colshift >= Math.ceil(this.mapwidth / 4) || row + rowshift >= Math.ceil(this.mapheight / 4)) {
+                        continue;
+                    }
+                    let dest = this.seagrid[row + rowshift][col + colshift].anchor;
+                    if (dest == null) {
+                        continue;
+                    }
+                    if (isconnected(this.seagrid[row][col].anchor, dest)) {
+                        // connect
+                        this.seagrid[row][col][oridir] = true;
+                        this.seagrid[row + rowshift][col + colshift][destdir] = true;
+                    }
+                }
+
+            }
+        }
+        console.log('Computed Sea Grid');
+        this.seagrid.forEach((row) => { console.log(row.join(' ')) });
+
+        let result = new Uint8Array(Math.ceil(this.mapheight / 4) * Math.ceil(this.mapwidth / 4));
+        for (let row = 0; row < Math.ceil(this.mapheight / 4); row++) {
+            for (let col = 0; col < Math.ceil(this.mapwidth / 4); col++) {
+                result[col * Math.ceil(this.mapheight / 4) + row] = this.seagrid[row][col].routebyte;
+            }
+        }
+        return result;
+    }
+    regioncheck() {
+        function getroot(tile) {
+            if (tile.parent == null) {
+                return tile;
+            }
+            return getroot(tile.parent);
+        }
+        function updateparent(tile1, tile2) {
+            if (!(getroot(tile1) === getroot(tile2))) {
+                getroot(tile2).parent = getroot(tile1);
+            }
+        }
+        // reset all parents to null
+        // check that boundary and only boundary are region 0
+        for (let row = 0; row < game.mapheight; row++) {
+            for (let col = 0; col < game.mapwidth; col++) {
+                game.grid[row][col].parent = null;
+                if (
+                    (game.grid[row][col].pathregion == 0) !=
+                    (row == 0 ||
+                        col == 0 ||
+                        row == game.mapheight - 1 ||
+                        col == game.mapwidth - 1)
+                ) {
+                    console.log(`Bad path region 0 at (${row}, ${col})`);
+                    return false;
+                }
+            }
+        }
+
+        let regions = [];
+        for (let row = 1; row < game.mapheight - 1; row++) {
+            for (let col = 1; col < game.mapwidth - 1; col++) {
+                curr_tile = game.grid[row][col];
+                //console.log(`Regions: ${regions.length} Tile (${row}, ${col}) iswater: ${curr_tile.iswater}, region: ${curr_tile.pathregion}`);
+                // check W, NW, N, NE tiles if same region, then copy parent
+                let adjtile = [
+                    game.grid[row][col - 1],
+                    game.grid[row - 1][col - 1],
+                    game.grid[row - 1][col],
+                    game.grid[row - 1][col + 1],
+                ];
+                for (let x = 0; x < adjtile.length; x++) {
+                    if (
+                        curr_tile.iswater != adjtile[x].iswater ||
+                        adjtile[x].pathregion == 0
+                    ) {
+                        //console.log((`Different land types at (${row}, ${col})`))
+                        continue;
+                    }
+                    if (curr_tile.pathregion != adjtile[x].pathregion) {
+                        console.log(`Mismatched path regions at (${row}, ${col})`);
+                        return false;
+                    }
+                    if (curr_tile.parent != null) {
+                        updateparent(curr_tile, adjtile[x]);
+                    } else {
+                        curr_tile.parent = getroot(adjtile[x]);
+                    }
+                }
+
+                // else new parent
+                if (curr_tile.parent == null) {
+                    regions.push(curr_tile);
+                }
+            }
+        }
+
+        regions = regions.filter((reg) => reg.parent == null);
+        console.log(`Found ${regions.length} disjoint regions`);
+        regions = regions.filter((reg) => reg.pathregion != 15);
+        for (let i = 0; i < regions.length - 1; i++) {
+            for (let j = i + 1; j < regions.length; j++) {
+                //console.log(`Comparing region ${i} to ${j}`);
+                if (
+                    regions[i].iswater == regions[j].iswater &&
+                    regions[i].pathregion == regions[j].pathregion
+                ) {
+                    console.log(
+                        `${regions[i].iswater ? "Water" : "Land"} region ${regions[i].pathregion
+                        } is disjoint`
+                    );
+                    return false;
+                }
+            }
+        }
+        console.log("Regions OK");
+        return true;
+    }
+    offshorefish() {
+        console.log("Hiding offshore fish");
+
+        for (let row = 1; row < this.mapheight - 1; row++) {
+            for (let col = 1; col < this.mapwidth - 1; col++) {
+                curr_tile = this.grid[row][col];
+                if (curr_tile.base == 25) {
+                    if (
+                        PRIMEPATTERN
+                            .get(row % 4)
+                            .includes((col + 4 * this.prime + Math.floor(row / 4) * 12) % 64)
+                    ) {
+                        let nearland = false;
+                        for (
+                            let lrow = Math.max(row - 2, 1);
+                            lrow < Math.min(row + 3, this.mapheight - 1);
+                            lrow++
+                        ) {
+                            for (
+                                let lcol = Math.max(col - 2, 1);
+                                lcol < Math.min(col + 3, this.mapwidth - 1);
+                                lcol++
+                            ) {
+                                if (!this.grid[lrow][lcol].iswater) {
+                                    nearland = true;
+                                }
+                            }
+                        }
+                        if (!nearland && !curr_tile.depleted) {
+                            curr_tile.depleted = true;
+                            curr_tile.modified = true;
+                        }
+                    } else {
+                        if (curr_tile.depleted) {
+                            curr_tile.depleted = false;
+                            curr_tile.modified = true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    resetrumors() {
+        for (let row = 1; row < this.mapheight - 1; row++) {
+            for (let col = 1; col < this.mapwidth - 1; col++) {
+                if (
+                    RUMORPATTERN
+                        .get(row % 4)
+                        .includes(
+                            (col + 64 * this.lcr + 68 * this.prime + Math.floor(row / 4) * 12) %
+                            128
+                        ) &&
+                    !curr_tile.iswater &&
+                    this.grid[row][col].explorer != 0x0f
+                ) {
+                    gathisme.grid[row][col].explorer = 0x0f;
+                    this.grid[row][col].modified = true;
+                }
+            }
+        }
+
+    }
 }
+
 
 // Constants
 
@@ -240,8 +736,8 @@ const BUILDINGS = new Map([
     ["furfactory", new Building("furfactory", "Fur Factory", 0x88, 0x04, [74, 90], [46, 54], [16, 26], 6)],
     ["carpentersshop", new Building("carpentersshop", "Carpenter's Shop", 0x88, 0x08, [20, 152], [88, 44], [54, 18], 10)],
     ["lumbermill", new Building("lumbermill", "Lumber Mill", 0x88, 0x10, [20, 152], [88, 44], [54, 18], 10)],
-    ["church", new Building("church", "Church", 0x88, 0x20, [106, 74], [106, 74], [70, 46], 16)],
-    ["cathedral", new Building("cathedral", "Cathedral", 0x88, 0x40, [106, 74], [106, 74], [70, 46], 16)],
+    ["church", new Building("church", "Church", 0x88, 0x20, [174, 22], [106, 74], [70, 46], 16)],
+    ["cathedral", new Building("cathedral", "Cathedral", 0x88, 0x40, [174, 22], [106, 74], [70, 46], 16)],
     ["blacksmithshouse", new Building("blacksmithshouse", "Blacksmith's House", 0x88, 0x80, [134, 108], [46, 54], [16, 26], 6)],
     ["blacksmithsshop", new Building("blacksmithsshop", "Blacksmith's Shop", 0x89, 0x01, [134, 108], [46, 54], [16, 26], 6)],
     ["ironworks", new Building("ironworks", "Iron Works", 0x89, 0x02, [134, 108], [46, 54], [16, 26], 6)]
@@ -262,5 +758,20 @@ const BUILDINGGROUPS = new Map([
     ["fur", ["furtradershouse", "furtradersshop", "furfactory"]],
     ["cotton", ["weavershouse", "weaversshop", "textilemill"]],
     ["rum", ["distillershouse", "distillersshop", "rumfactory"]],
-    ["tobacco", ["tobacconistshouse", "tobacconistsshop", "cigarfactory"]]
+    ["tobacco", ["tobacconistshouse", "tobacconistsshop", "cigarfactory"]],
+    ["townhall", ["townhall"]]
+]);
+
+const PRIMEPATTERN = new Map([
+    [0, [0, 10, 17, 27, 34, 40, 51, 57]],
+    [1, [4, 14, 21, 31, 38, 44, 55, 61]],
+    [2, [2, 8, 19, 25, 32, 42, 49, 59]],
+    [3, [6, 12, 23, 29, 36, 46, 53, 63]],
+]);
+
+const RUMORPATTERN = new Map([
+    [1, [36, 53, 70, 87]],
+    [2, [10, 27, 104, 121]],
+    [3, [44, 61, 78, 95]],
+    [0, [2, 19, 96, 113]],
 ]);
