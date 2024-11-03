@@ -261,22 +261,13 @@ function filesave() {
       if (game.grid[row][col].modified) {
         modcount++;
         console.log(
-          "Updating-- Row:",
-          row,
-          "Col:",
-          col,
-          "Terrain:",
-          game.bytes[game.tmapstart + game.mapwidth * row + col],
-          "->",
-          game.grid[row][col].terrainbyte,
-          "Mask",
-          game.bytes[game.mmapstart + game.mapwidth * row + col],
-          "->",
-          game.grid[row][col].maskbyte,
-          "Path",
-          game.bytes[game.pmapstart + game.mapwidth * row + col],
-          "->",
-          game.grid[row][col].pathbyte
+          `Updating-- Row: ${row} Col: ${col}`,
+          `Terrain: ${game.bytes[game.tmapstart + game.mapwidth * row + col]}`,
+          `-> ${game.grid[row][col].terrainbyte}`,
+          `Mask ${game.bytes[game.mmapstart + game.mapwidth * row + col]}`,
+          `-> ${game.grid[row][col].maskbyte}`,
+          `Path ${game.bytes[game.pmapstart + game.mapwidth * row + col]}`,
+          `-> ${game.grid[row][col].pathbyte}`          
         );
         game.bytes[game.tmapstart + game.mapwidth * row + col] =
           game.grid[row][col].terrainbyte;
@@ -313,7 +304,7 @@ function filesave() {
   }
   console.log(`Modified ${modcount} tiles`);
   console.log(`Setting prime: ${game.prime}, rumors: ${game.lcr}`);
-  if (!regioncheck()) {
+  if (!game.regioncheck()) {
     alert(
       "Warning: Some path regions seem broken. Make sure all land masses and waterbodies have the same region code for all connected tiles. Disconnected regions should have their own code. Use code 15 for all remaining regions if you run out. The biggest regions should use 1-14."
     );
@@ -921,7 +912,7 @@ function Export() {
       }
     }
   }
-  if (!regioncheck()) {
+  if (!game.regioncheck()) {
     alert(
       "Warning: Some path regions seem broken. Make sure all land masses and waterbodies have the same region code for all connected tiles. Disconnected regions should have their own code. Use code 15 for all remaining regions if you run out. The biggest regions should use 1-14."
     );
