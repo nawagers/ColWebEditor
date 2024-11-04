@@ -45,7 +45,7 @@ class Tile {
     constructor(terrain, mask, vis) {
         // terrain bits (map 1)
         if (terrain & 0x10) {
-            this.base = terrain & 0x1f; // use 5 bits if "special" bit activated
+            this.base = terrain & 0x1f; // use 5 bits if 'special' bit activated
         } else {
             this.base = terrain & 0x07;
         }
@@ -106,7 +106,7 @@ class Tile {
     }
     update(terrain) {
         if (terrain & 0x10) {
-            this.base = terrain & 0x1f; // use 5 bits if "special" bit activated
+            this.base = terrain & 0x1f; // use 5 bits if 'special' bit activated
         } else {
             this.base = terrain & 0x07;
         }
@@ -127,7 +127,7 @@ class Colony {
         this.col = bytes[0];
         this.row = bytes[1];
         this.name = String.fromCharCode(...bytes.slice(0x02, 0x1A)).split('\0', 1)[0];
-        const powers = ["English", "French", "Spanish", "Dutch"];
+        const powers = ['English', 'French', 'Spanish', 'Dutch'];
         this.power = bytes[0x1A];
         console.log(`Loaded ${powers[this.power]} colony of ${this.name} at (${this.row}, ${this.col})`)
         // 0x1C has some flags
@@ -170,7 +170,7 @@ class Colony {
         }
         this.sentiment = bytes[0xC2] + 256 * bytes[0xC3];
         this.sentimentdivisor = bytes[0xC6] + 256 * bytes[0xC7];
-        console.log("Buildings flags:", this.buildingbytes);
+        console.log('Buildings flags:', this.buildingbytes);
     }
 
     get buildingbytes() {
@@ -187,7 +187,7 @@ class Colony {
 
 class Building {
     constructor(name, text, byte, bit, location, size, unitcenter, unitspacing) {
-        // Building("stockade", "Stockade", 0x84, 0x1, [246, 212], [70, 46], 16){
+        // Building('stockade', 'Stockade', 0x84, 0x1, [246, 212], [70, 46], 16){
         this.name = name;
         this.text = text;
         this.byte = byte;
@@ -214,27 +214,27 @@ class Gamestate {
         this.lcr =
             (filebytes[this.tmapstart + 4 * this.mapsize + 0x264] & 0xf0) / 16;
         console.log(`Original prime: ${this.prime}, rumors: ${this.lcr}`);
-        this.name = "COLONY00.SAV";
+        this.name = 'COLONY00.SAV';
         console.log(
-            `Colony offset:      0x${this.colstart.toString(16).padStart(4, "0")}`
+            `Colony offset:      0x${this.colstart.toString(16).padStart(4, '0')}`
         );
         console.log(
-            `Village offset: 0x${this.vilstart.toString(16).padStart(4, "0")} `
+            `Village offset: 0x${this.vilstart.toString(16).padStart(4, '0')} `
         );
         console.log(
-            `Terrain map offset: 0x${this.tmapstart.toString(16).padStart(4, "0")} `
+            `Terrain map offset: 0x${this.tmapstart.toString(16).padStart(4, '0')} `
         );
         console.log(
-            `Mask map offset: 0x${this.mmapstart.toString(16).padStart(4, "0")} `
+            `Mask map offset: 0x${this.mmapstart.toString(16).padStart(4, '0')} `
         );
         console.log(
-            `Path map offset: 0x${this.pmapstart.toString(16).padStart(4, "0")} `
+            `Path map offset: 0x${this.pmapstart.toString(16).padStart(4, '0')} `
         );
         console.log(
-            `Sea routes offset: 0x${this.searoutestart.toString(16).padStart(4, "0")} `
+            `Sea routes offset: 0x${this.searoutestart.toString(16).padStart(4, '0')} `
         );
         console.log(
-            `Land routes offset: 0x${this.landroutestart.toString(16).padStart(4, "0")} `
+            `Land routes offset: 0x${this.landroutestart.toString(16).padStart(4, '0')} `
         );
         this.grid = [];
 
@@ -253,8 +253,8 @@ class Gamestate {
             this.grid.push(tilerow);
         }
         this.colonies = [];
-        const powers = ["e", "f", "s", "d"];
-        const structure = ["colony", "stockade", "", "fort", "", "", "", "fortress"];
+        const powers = ['e', 'f', 's', 'd'];
+        const structure = ['colony', 'stockade', '', 'fort', '', '', '', 'fortress'];
         for (let i = 0; i < this.num_colonies; i++) {
             // code to mark colonies in mapgrid
 
@@ -336,7 +336,7 @@ class Gamestate {
         );
     }
     get landroutegrid() {
-        console.log("Computing land routing");
+        console.log('Computing land routing');
         function isconnected(origin, dest) {
             function neighbors(tile) {
                 let dir = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
@@ -401,7 +401,7 @@ class Gamestate {
         }
 
         let starttime = performance.now();
-        let dirs = [[-1, 0, "N", "S"], [-1, 1, "NE", "SW"], [0, 1, "E", "W"], [1, 1, "SE", "NW"]];
+        let dirs = [[-1, 0, 'N', 'S'], [-1, 1, 'NE', 'SW'], [0, 1, 'E', 'W'], [1, 1, 'SE', 'NW']];
         for (let row = 0; row < Math.ceil(this.mapheight / 4); row++) {
             //console.log(`Row ${row}`);
             for (let col = 0; col < Math.ceil(this.mapwidth / 4); col++) {
@@ -508,7 +508,7 @@ class Gamestate {
         }
 
         let starttime = performance.now();
-        let dirs = [[-1, 0, "N", "S"], [-1, 1, "NE", "SW"], [0, 1, "E", "W"], [1, 1, "SE", "NW"]];
+        let dirs = [[-1, 0, 'N', 'S'], [-1, 1, 'NE', 'SW'], [0, 1, 'E', 'W'], [1, 1, 'SE', 'NW']];
         for (let row = 0; row < Math.ceil(this.mapheight / 4); row++) {
             //console.log(`Row ${row}`);
             for (let col = 0; col < Math.ceil(this.mapwidth / 4); col++) {
@@ -625,18 +625,18 @@ class Gamestate {
                     regions[i].pathregion == regions[j].pathregion
                 ) {
                     console.log(
-                        `${regions[i].iswater ? "Water" : "Land"} region ${regions[i].pathregion
+                        `${regions[i].iswater ? 'Water' : 'Land'} region ${regions[i].pathregion
                         } is disjoint`
                     );
                     return false;
                 }
             }
         }
-        console.log("Regions OK");
+        console.log('Regions OK');
         return true;
     }
     offshorefish() {
-        console.log("Hiding offshore fish");
+        console.log('Hiding offshore fish');
 
         for (let row = 1; row < this.mapheight - 1; row++) {
             for (let col = 1; col < this.mapwidth - 1; col++) {
@@ -703,63 +703,63 @@ class Gamestate {
 // Constants
 
 const BUILDINGS = new Map([
-    ["stockade", new Building("stockade", "Stockade", 0x84, 0x01, [246, 212], [146, 36], [68, 10], 22)],
-    ["fort", new Building("fort", "Fort", 0x84, 0x02, [246, 212], [146, 36], [68, 10], 22)],
-    ["fortress", new Building("fortress", "Fortress", 0x84, 0x04, [246, 212], [146, 36], [68, 10], 22)],
-    ["armory", new Building("armory", "Armory", 0x84, 0x08, [30, 204], [88, 44], [56, 18], 12)],
-    ["magazine", new Building("magazine", "Magazine", 0x84, 0x10, [30, 204], [88, 44], [56, 18], 12)],
-    ["arsenal", new Building("arsenal", "Arsenal", 0x84, 0x20, [30, 204], [88, 44], [56, 18], 12)],
-    ["docks", new Building("docks", "Docks", 0x84, 0x40, [248, 110], [0, 0], [0, 0], 0)],
-    ["drydock", new Building("drydock", "Drydock", 0x84, 0x80, [248, 110], [0, 0], [0, 0], 0)],
-    ["shipyard", new Building("shipyard", "Shipyard", 0x85, 0x01, [248, 110], [0, 0], [0, 0], 0)],
-    ["townhall", new Building("townhall", "Townhall", 0x85, 0x02, [132, 174], [106, 72], [70, 46], 16)],
-    ["schoolhouse", new Building("schoolhouse", "Schoolhouse", 0x85, 0x10, [256, 106], [88, 44], [56, 18], 12)],
-    ["college", new Building("college", "College", 0x85, 0x20, [256, 106], [88, 44], [56, 18], 12)],
-    ["university", new Building("university", "University", 0x85, 0x40, [256, 106], [88, 44], [56, 18], 12)],
-    ["warehouse", new Building("warehouse", "Warehouse", 0x85, 0x80, [12, 28], [0, 0], [0, 0], 0)],
-    ["warehouseexpansion", new Building("warehouseexpansion", "Warehouse Expansion", 0x86, 0x01, [12, 28], [0, 0], [0, 0], 0)],
-    ["stable", new Building("stable", "Stable", 0x86, 0x02, [12, 28], [0, 0], [0, 0], 0)],
-    ["customhouse", new Building("customhouse", "Custom House", 0x86, 0x04, [16, 82], [0, 0], [0, 0], 0)],
-    ["press", new Building("press", "Printing Press", 0x86, 0x08, [346, 36], [0, 0], [0, 0], 0)],
-    ["newspaper", new Building("newspaper", "Newspaper", 0x86, 0x10, [346, 36], [0, 0], [0, 0], 0)],
-    ["weavershouse", new Building("weavershouse", "Weaver's House", 0x86, 0x20, [290, 30], [46, 54], [18, 26], 8)],
-    ["weaversshop", new Building("weaversshop", "Weaver's Shop", 0x86, 0x40, [290, 30], [46, 54], [18, 26], 8)],
-    ["textilemill", new Building("textilemill", "Textile Mill", 0x86, 0x80, [290, 30], [46, 54], [18, 26], 8)],
-    ["tobacconistshouse", new Building("tobacconistshouse", "Tobacconist's House", 0x87, 0x01, [112, 26], [46, 54], [18, 26], 8)],
-    ["tobacconistsshop", new Building("tobacconistsshop", "Tobacconist's Shop", 0x87, 0x02, [112, 26], [46, 54], [18, 26], 8)],
-    ["cigarfactory", new Building("cigarfactory", "Cigar Factory", 0x87, 0x04, [112, 26], [46, 54], [18, 26], 8)],
-    ["distillershouse", new Building("distillershouse", "Distiller's House", 0x87, 0x08, [192, 106], [46, 54], [18, 26], 8)],
-    ["distillersshop", new Building("distillersshop", "Distiller's Shop", 0x87, 0x10, [192, 106], [46, 54], [18, 26], 8)],
-    ["rumfactory", new Building("rumfactory", "Rum Factory", 0x87, 0x20, [192, 106], [46, 54], [18, 26], 8)],
-    ["furtradershouse", new Building("furtradershouse", "Fur Trader's House", 0x88, 0x01, [74, 90], [46, 54], [16, 26], 6)],
-    ["furtradersshop", new Building("furtradersshop", "Fur Trader's Shop", 0x88, 0x02, [74, 90], [46, 54], [16, 26], 6)],
-    ["furfactory", new Building("furfactory", "Fur Factory", 0x88, 0x04, [74, 90], [46, 54], [16, 26], 6)],
-    ["carpentersshop", new Building("carpentersshop", "Carpenter's Shop", 0x88, 0x08, [20, 152], [88, 44], [54, 18], 10)],
-    ["lumbermill", new Building("lumbermill", "Lumber Mill", 0x88, 0x10, [20, 152], [88, 44], [54, 18], 10)],
-    ["church", new Building("church", "Church", 0x88, 0x20, [174, 22], [106, 74], [70, 46], 16)],
-    ["cathedral", new Building("cathedral", "Cathedral", 0x88, 0x40, [174, 22], [106, 74], [70, 46], 16)],
-    ["blacksmithshouse", new Building("blacksmithshouse", "Blacksmith's House", 0x88, 0x80, [134, 108], [46, 54], [16, 26], 6)],
-    ["blacksmithsshop", new Building("blacksmithsshop", "Blacksmith's Shop", 0x89, 0x01, [134, 108], [46, 54], [16, 26], 6)],
-    ["ironworks", new Building("ironworks", "Iron Works", 0x89, 0x02, [134, 108], [46, 54], [16, 26], 6)]
+    ['stockade', new Building('stockade', 'Stockade', 0x84, 0x01, [246, 212], [146, 36], [68, 10], 22)],
+    ['fort', new Building('fort', 'Fort', 0x84, 0x02, [246, 212], [146, 36], [68, 10], 22)],
+    ['fortress', new Building('fortress', 'Fortress', 0x84, 0x04, [246, 212], [146, 36], [68, 10], 22)],
+    ['armory', new Building('armory', 'Armory', 0x84, 0x08, [30, 204], [88, 44], [56, 18], 12)],
+    ['magazine', new Building('magazine', 'Magazine', 0x84, 0x10, [30, 204], [88, 44], [56, 18], 12)],
+    ['arsenal', new Building('arsenal', 'Arsenal', 0x84, 0x20, [30, 204], [88, 44], [56, 18], 12)],
+    ['docks', new Building('docks', 'Docks', 0x84, 0x40, [248, 110], [0, 0], [0, 0], 0)],
+    ['drydock', new Building('drydock', 'Drydock', 0x84, 0x80, [248, 110], [0, 0], [0, 0], 0)],
+    ['shipyard', new Building('shipyard', 'Shipyard', 0x85, 0x01, [248, 110], [0, 0], [0, 0], 0)],
+    ['townhall', new Building('townhall', 'Townhall', 0x85, 0x02, [132, 174], [106, 72], [70, 46], 16)],
+    ['schoolhouse', new Building('schoolhouse', 'Schoolhouse', 0x85, 0x10, [256, 106], [88, 44], [56, 18], 12)],
+    ['college', new Building('college', 'College', 0x85, 0x20, [256, 106], [88, 44], [56, 18], 12)],
+    ['university', new Building('university', 'University', 0x85, 0x40, [256, 106], [88, 44], [56, 18], 12)],
+    ['warehouse', new Building('warehouse', 'Warehouse', 0x85, 0x80, [12, 28], [0, 0], [0, 0], 0)],
+    ['warehouseexpansion', new Building('warehouseexpansion', 'Warehouse Expansion', 0x86, 0x01, [12, 28], [0, 0], [0, 0], 0)],
+    ['stable', new Building('stable', 'Stable', 0x86, 0x02, [12, 28], [0, 0], [0, 0], 0)],
+    ['customhouse', new Building('customhouse', 'Custom House', 0x86, 0x04, [16, 82], [0, 0], [0, 0], 0)],
+    ['press', new Building('press', 'Printing Press', 0x86, 0x08, [346, 36], [0, 0], [0, 0], 0)],
+    ['newspaper', new Building('newspaper', 'Newspaper', 0x86, 0x10, [346, 36], [0, 0], [0, 0], 0)],
+    ['weavershouse', new Building('weavershouse', 'Weaver's House', 0x86, 0x20, [290, 30], [46, 54], [18, 26], 8)],
+    ['weaversshop', new Building('weaversshop', 'Weaver's Shop', 0x86, 0x40, [290, 30], [46, 54], [18, 26], 8)],
+    ['textilemill', new Building('textilemill', 'Textile Mill', 0x86, 0x80, [290, 30], [46, 54], [18, 26], 8)],
+    ['tobacconistshouse', new Building('tobacconistshouse', 'Tobacconist's House', 0x87, 0x01, [112, 26], [46, 54], [18, 26], 8)],
+    ['tobacconistsshop', new Building('tobacconistsshop', 'Tobacconist's Shop', 0x87, 0x02, [112, 26], [46, 54], [18, 26], 8)],
+    ['cigarfactory', new Building('cigarfactory', 'Cigar Factory', 0x87, 0x04, [112, 26], [46, 54], [18, 26], 8)],
+    ['distillershouse', new Building('distillershouse', 'Distiller's House', 0x87, 0x08, [192, 106], [46, 54], [18, 26], 8)],
+    ['distillersshop', new Building('distillersshop', 'Distiller's Shop', 0x87, 0x10, [192, 106], [46, 54], [18, 26], 8)],
+    ['rumfactory', new Building('rumfactory', 'Rum Factory', 0x87, 0x20, [192, 106], [46, 54], [18, 26], 8)],
+    ['furtradershouse', new Building('furtradershouse', 'Fur Trader's House', 0x88, 0x01, [74, 90], [46, 54], [16, 26], 6)],
+    ['furtradersshop', new Building('furtradersshop', 'Fur Trader's Shop', 0x88, 0x02, [74, 90], [46, 54], [16, 26], 6)],
+    ['furfactory', new Building('furfactory', 'Fur Factory', 0x88, 0x04, [74, 90], [46, 54], [16, 26], 6)],
+    ['carpentersshop', new Building('carpentersshop', 'Carpenter's Shop', 0x88, 0x08, [20, 152], [88, 44], [54, 18], 10)],
+    ['lumbermill', new Building('lumbermill', 'Lumber Mill', 0x88, 0x10, [20, 152], [88, 44], [54, 18], 10)],
+    ['church', new Building('church', 'Church', 0x88, 0x20, [174, 22], [106, 74], [70, 46], 16)],
+    ['cathedral', new Building('cathedral', 'Cathedral', 0x88, 0x40, [174, 22], [106, 74], [70, 46], 16)],
+    ['blacksmithshouse', new Building('blacksmithshouse', 'Blacksmith's House', 0x88, 0x80, [134, 108], [46, 54], [16, 26], 6)],
+    ['blacksmithsshop', new Building('blacksmithsshop', 'Blacksmith's Shop', 0x89, 0x01, [134, 108], [46, 54], [16, 26], 6)],
+    ['ironworks', new Building('ironworks', 'Iron Works', 0x89, 0x02, [134, 108], [46, 54], [16, 26], 6)]
 ]);
 
 const BUILDINGGROUPS = new Map([
-    ["fortification", [null, "stockade", "fort", "fortress"]],
-    ["press", [null, "press", "newspaper"]],
-    ["church", [null, "church", "cathedral"]],
-    ["carpentersshop", ["carpentersshop", "lumbermill"]],
-    ["stable", [null, "stable"]],
-    ["warehouse", [null, "warehouse", "warehouseexpansion"]],
-    ["blacksmith", ["blacksmithshouse", "blacksmithsshop", "ironworks"]],
-    ["armory", [null, "armory", "magazine", "arsenal"]],
-    ["docks", [null, "docks", "drydock", "shipyard"]],
-    ["customhouse", [null, "customhouse"]],
-    ["schoolhouse", [null, "schoolhouse", "college", "university"]],
-    ["fur", ["furtradershouse", "furtradersshop", "furfactory"]],
-    ["cotton", ["weavershouse", "weaversshop", "textilemill"]],
-    ["rum", ["distillershouse", "distillersshop", "rumfactory"]],
-    ["tobacco", ["tobacconistshouse", "tobacconistsshop", "cigarfactory"]],
-    ["townhall", ["townhall"]]
+    ['fortification', [null, 'stockade', 'fort', 'fortress']],
+    ['press', [null, 'press', 'newspaper']],
+    ['church', [null, 'church', 'cathedral']],
+    ['carpentersshop', ['carpentersshop', 'lumbermill']],
+    ['stable', [null, 'stable']],
+    ['warehouse', [null, 'warehouse', 'warehouseexpansion']],
+    ['blacksmith', ['blacksmithshouse', 'blacksmithsshop', 'ironworks']],
+    ['armory', [null, 'armory', 'magazine', 'arsenal']],
+    ['docks', [null, 'docks', 'drydock', 'shipyard']],
+    ['customhouse', [null, 'customhouse']],
+    ['schoolhouse', [null, 'schoolhouse', 'college', 'university']],
+    ['fur', ['furtradershouse', 'furtradersshop', 'furfactory']],
+    ['cotton', ['weavershouse', 'weaversshop', 'textilemill']],
+    ['rum', ['distillershouse', 'distillersshop', 'rumfactory']],
+    ['tobacco', ['tobacconistshouse', 'tobacconistsshop', 'cigarfactory']],
+    ['townhall', ['townhall']]
 ]);
 
 const PRIMEPATTERN = new Map([
