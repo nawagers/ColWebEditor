@@ -15,7 +15,3 @@ export default [
         },
     },
 ];
-var MAX_CHARS = 120;
-var SPACES_PER_TAB = 4;
-
-// module.exports = {
