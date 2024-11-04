@@ -12,6 +12,7 @@
 
 /* global redraw */
 /* global noLoop */
+/* global image */
 /* global resizeCanvas */
 /* global createButton */
 /* global createCheckbox */
@@ -139,7 +140,7 @@ function create_map_controls() {
   terrain_select.changed(updateFeatureOptions);
   map_controls.set('terrain_select', terrain_select);
   let feature_select = createSelect();
-  feature_opts = [['(None)', 0], ['Forest', 8], ['Mountains', 160], ['Hills', 32], ['Minor River', 64],
+  let feature_opts = [['(None)', 0], ['Forest', 8], ['Mountains', 160], ['Hills', 32], ['Minor River', 64],
   ['Major River', 192], ['Hills/Minor River', 96], ['Forest/Minor River', 72], ['Forest/Major River', 200]];
   feature_opts.forEach(([name, val]) => { feature_select.option(name, val) });
   feature_select.position(558, 8);
@@ -460,7 +461,7 @@ function mouseClicked(event) {
       return;
     }
 
-    newterr = int(map_controls.get('terrain_select').value()) + int(map_controls.get('feature_select').value());
+    let newterr = Number(map_controls.get('terrain_select').value()) + Number(map_controls.get('feature_select').value());
     console.log(newterr);
     click_tile.update(newterr);
     if (click_tile.iswater) {
@@ -502,8 +503,8 @@ function fileread(data, filename) {
   ];
   for (let i = 0; i < game.num_villages; i++) {
     // code to villages in mapgrid
-    col = game.bytes[game.vilstart + i * 18];
-    row = game.bytes[game.vilstart + i * 18 + 1];
+    let col = game.bytes[game.vilstart + i * 18];
+    let row = game.bytes[game.vilstart + i * 18 + 1];
 
     game.grid[row][col].village =
       tribes[game.bytes[game.vilstart + i * 18 + 2] - 4];
@@ -525,7 +526,7 @@ function fileread(data, filename) {
 
 function updatebldgs() {
   console.log('adjust colony options');
-  curr_colony = game.colonies[int(colony_controls.get('colonyselect').selected())];
+  let curr_colony = game.colonies[Number(colony_controls.get('colonyselect').selected())];
   curr_colony.modified = true;
 
   for (const [grp, bldgs] of BUILDINGGROUPS.entries()) {
@@ -565,9 +566,9 @@ function drawColony() {
     }
   }
 
-  const goods = ['Food', 'Sugar', 'Tobacco', 'Cotton', 'Furs', 'Lumber', 'Ore', 'Silver', 'Horses', 'Rum', 'Cigars', 'Cloth', 'Coats', 'Trade Goods', 'Tools', 'Muskets'];
+  //const goods = ['Food', 'Sugar', 'Tobacco', 'Cotton', 'Furs', 'Lumber', 'Ore', 'Silver', 'Horses', 'Rum', 'Cigars', 'Cloth', 'Coats', 'Trade Goods', 'Tools', 'Muskets'];
 
-  let curr_colony = game.colonies[int(colony_controls.get('colonyselect').selected())];
+  let curr_colony = game.colonies[Number(colony_controls.get('colonyselect').selected())];
   image(units.get('colonyscreen'), 0, 0);
   for (let i = 0; i < curr_colony.cargo.length; i++) {
     if (curr_colony.cargo[i] > 999) {
