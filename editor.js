@@ -13,6 +13,7 @@
 /* global redraw */
 /* global noLoop */
 /* global image */
+/* global loadImage */
 /* global resizeCanvas */
 /* global createButton */
 /* global createCheckbox */
@@ -20,6 +21,7 @@
 /* global createCanvas */
 /* global createFileInput */
 /* global createSpan */
+/* global loadBytes */
 /* global keyIsDown */
 /* global keyCode */
 /* global DOWN_ARROW */
@@ -32,6 +34,11 @@
 /* global textAlign */
 /* global fill */
 /* global text */
+/* global Gamestate */
+/* global Tile */
+/* global RouteTile */
+/* global Colony */
+/* global Building */
 /* global BUILDINGGROUPS */
 /* global BUILDINGS */
 
@@ -92,7 +99,7 @@ function preload() {
 function setup() {
   console.log('building interface');
   toolbar = createDiv();
-  toolbar.style(`width:100%`)
+  toolbar.style('width:100%')
   toolbar.style(`height:${topnav}px`)
   toolbar.style('position:fixed');
   toolbar.style('top:0');
@@ -533,8 +540,8 @@ function updatebldgs() {
     if (!colony_controls.has(grp)) {
       continue;  // no radio buttons for this grp
     }
-    val = colony_controls.get(grp).value();
-    remainder = false;
+    let val = colony_controls.get(grp).value();
+    let remainder = false;
     for (let i = bldgs.length - 1; i >= 0; i--) {
       if (bldgs[i] != null && val == bldgs[i]) {
         curr_colony[bldgs[i]] = true;
@@ -639,6 +646,8 @@ function drawColony() {
   let water = false;
   let ocean = false;
   console.log('checking water tiles');
+  let row;
+  let col;
   for ([row, col] of surrounding) {
     if (game.grid[curr_colony.row + row][curr_colony.col + col].iswater) {
       water = true;
@@ -653,7 +662,7 @@ function drawColony() {
   let smith = Boolean(game.bytes[game.powerstart + curr_colony.power * 0x13C + 7] & 0x01);
   let stuyvesant = Boolean(game.bytes[game.powerstart + curr_colony.power * 0x13C + 7] & 0x08);
 
-  enableconditions = [
+  let enableconditions = [
     ['docks', 'shipyard', ocean],
     ['docks', 'drydock', ocean],
     ['docks', 'docks', water],
