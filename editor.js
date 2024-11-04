@@ -14,11 +14,17 @@
 /* global noLoop */
 /* global keyIsDown */
 /* global keyPressed */
-/* global DOWNARROW */
-/* global UPARROW */
+/* global keyCode */
+/* global DOWN_ARROW */
+/* global UP_ARROW */
 /* global LEFT_ARROW */
 /* global RIGHT_ARROW */
 /* global CONTROL */
+/* global CENTER */
+/* global textSize */
+/* global textAlign */
+/* global fill */
+/* global text */
 
 let topnav = 100;
 const basetiles = new Map();
@@ -668,7 +674,7 @@ function drawMap() {
 
   for (let row = 0; row < game.mapheight; row++) {
     for (let col = 0; col < game.mapwidth; col++) {
-      curr_tile = game.grid[row][col];
+      let curr_tile = game.grid[row][col];
 
       function sprite(img, condition) {
         if (condition == null || condition) {
