@@ -12,6 +12,13 @@
 
 /* global redraw */
 /* global noLoop */
+/* global resizeCanvas */
+/* global createButton */
+/* global createCheckbox */
+/* global createSelect */
+/* global createCanvas */
+/* global createFileInput */
+/* global createSpan */
 /* global keyIsDown */
 /* global keyCode */
 /* global DOWN_ARROW */
@@ -181,17 +188,17 @@ function create_map_controls() {
 }
 
 function create_colony_controls() {
-  mapview = createButton('Return to Map');
+  let mapview = createButton('Return to Map');
   mapview.position(700, topnav);
   mapview.mouseClicked(setmapview);
-  powerselect = createSelect();
+  let powerselect = createSelect();
   powerselect.position(700, topnav + 30);
   for (let [num, name] of ['English', 'French', 'Spanish', 'Dutch'].entries()) {
     powerselect.option(name, num);
   }
   powerselect.mouseClicked(selectpower);
 
-  colonyselect = createSelect();
+  let colonyselect = createSelect();
   colonyselect.position(700, topnav + 60);
   for (let i = 0; i < game.colonies.length; i++) {
     colonyselect.option(game.colonies[i].name, i)
@@ -231,8 +238,8 @@ function remove_controls(ctrl_set) {
 
 function selectpower() {
   console.log('building colony list');
-  ctl = colony_controls.get('colonyselect');
-  pwr = colony_controls.get('powerselect').value();
+  let ctl = colony_controls.get('colonyselect');
+  let pwr = colony_controls.get('powerselect').value();
   while (ctl.elt.length) {
     ctl.elt.remove(0);
   }
@@ -363,9 +370,9 @@ function draw() {
 function updateFeatureOptions() {
   const forests = ['8', '72', '200'];
   const hills = ['160', '32', '96'];
-  if (int(map_controls.get('terrain_select').value()) > 7) {
+  if (Number(map_controls.get('terrain_select').value()) > 7) {
     forests.map((x) => map_controls.get('feature_select').disable(x));
-    if (int(map_controls.get('terrain_select').value()) > 24) {
+    if (Number(map_controls.get('terrain_select').value()) > 24) {
       hills.map((x) => map_controls.get('feature_select').disable(x));
     } else {
       hills.map((x) => map_controls.get('feature_select').enable(x));
@@ -390,7 +397,7 @@ function mouseClicked(event) {
     }
     let row = Math.floor((event.offsetY) / 32);
     let col = Math.floor((event.offsetX) / 32);
-    click_tile = game.grid[row][col];
+    let click_tile = game.grid[row][col];
     if (click_tile.colony && map_controls.get('colony_check').checked()) {
       for (let i = 0; i < game.num_colonies; i++) {
         if (
