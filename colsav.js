@@ -579,7 +579,7 @@ class Gamestate {
         let regions = [];
         for (let row = 1; row < this.mapheight - 1; row++) {
             for (let col = 1; col < this.mapwidth - 1; col++) {
-                let curr_tile = this.grid[row][col];
+                curr_tile = this.grid[row][col];
                 //console.log(`Regions: ${regions.length} Tile (${row}, ${col}) iswater: ${curr_tile.iswater}, region: ${curr_tile.pathregion}`);
                 // check W, NW, N, NE tiles if same region, then copy parent
                 let adjtile = [

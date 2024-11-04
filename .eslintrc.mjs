@@ -1,5 +1,5 @@
 import js from '@eslint/js';
-import globals from "globals";
+import globals from 'globals';
 
 export default [
     js.configs.recommended,
@@ -9,7 +9,7 @@ export default [
                 ...globals.browser,
             }
         },
-        files: ["**/*.js", "**/*.cjs", "**/*.mjs"],
+        files: ['**/*.js', '**/*.cjs', '**/*.mjs'],
         rules: {
             quotes: ['warn', 'single'],
         },
