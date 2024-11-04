@@ -10,6 +10,7 @@
 // Validate files using header
 // Add row/col numbers to border tiles
 
+/* global p5 */
 /* global redraw */
 /* global noLoop */
 /* global image */
@@ -18,9 +19,11 @@
 /* global createButton */
 /* global createCheckbox */
 /* global createSelect */
+/* global createRadio */
 /* global createCanvas */
 /* global createFileInput */
 /* global createSpan */
+/* global createDiv */
 /* global loadBytes */
 /* global keyIsDown */
 /* global keyCode */
@@ -35,10 +38,8 @@
 /* global fill */
 /* global text */
 /* global Gamestate */
-/* global Tile */
-/* global RouteTile */
-/* global Colony */
-/* global Building */
+/* global RUMORPATTERN */
+/* global PRIMEPATTERN */
 /* global BUILDINGGROUPS */
 /* global BUILDINGS */
 
@@ -598,7 +599,7 @@ function drawColony() {
   // map at 448, 64 (tiles 48x48)
   for (let r = -1; r < 2; r++) {
     for (let c = -1; c < 2; c++) {
-      tile = game.grid[curr_colony.row + r][curr_colony.col + c];
+      let tile = game.grid[curr_colony.row + r][curr_colony.col + c];
       image(bigbasetiles.get(tile.base), 496 + c * 48, 112 + r * 48);
       if (tile.forested) {
         image(bigbasetiles.get(8), 496 + c * 48, 112 + r * 48);
@@ -827,7 +828,7 @@ function drawMap() {
         fill(255);
         if (row == 0 || row == game.mapheight - 1) { fill(0) };
         textAlign(CENTER, CENTER);
-        text(int(curr_tile.pacific), 32 * col + 16, 32 * row + 16);
+        text(Number(curr_tile.pacific), 32 * col + 16, 32 * row + 16);
       }
     }
   }
