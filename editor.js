@@ -10,6 +10,16 @@
 // Validate files using header
 // Add row/col numbers to border tiles
 
+/* global redraw */
+/* global noLoop */
+/* global keyIsDown */
+/* global keyPressed */
+/* global DOWNARROW */
+/* global UPARROW */
+/* global LEFT_ARROW */
+/* global RIGHT_ARROW */
+/* global CONTROL */
+
 let topnav = 100;
 const basetiles = new Map();
 const bigbasetiles = new Map();
