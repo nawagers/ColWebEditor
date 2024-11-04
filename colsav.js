@@ -343,10 +343,10 @@ class Gamestate {
                 let tile_neighbors = []
                 dir.forEach(([row, col]) => {
                     if (tile.row + row > 0 && tile.col + col >= 0 &&
-                        tile.row + row + 1 < game.mapheight && tile.col + col < game.mapwidth) {
-                        if (!game.grid[tile.row + row][tile.col + col].iswater) {
+                        tile.row + row + 1 < this.mapheight && tile.col + col < this.mapwidth) {
+                        if (!this.grid[tile.row + row][tile.col + col].iswater) {
 
-                            tile_neighbors.push(game.grid[tile.row + row][tile.col + col])
+                            tile_neighbors.push(this.grid[tile.row + row][tile.col + col])
                         }
                     }
                 }
@@ -448,9 +448,9 @@ class Gamestate {
                 let tile_neighbors = []
                 dir.forEach(([row, col]) => {
                     if (tile.row + row > 0 && tile.col + col >= 0 &&
-                        tile.row + row + 1 < game.mapheight && tile.col + col < game.mapwidth) {
-                        if (game.grid[tile.row + row][tile.col + col].iswater) {
-                            tile_neighbors.push(game.grid[tile.row + row][tile.col + col])
+                        tile.row + row + 1 < this.mapheight && tile.col + col < this.mapwidth) {
+                        if (this.grid[tile.row + row][tile.col + col].iswater) {
+                            tile_neighbors.push(this.grid[tile.row + row][tile.col + col])
                         }
                     }
                 }
@@ -560,15 +560,15 @@ class Gamestate {
         }
         // reset all parents to null
         // check that boundary and only boundary are region 0
-        for (let row = 0; row < game.mapheight; row++) {
-            for (let col = 0; col < game.mapwidth; col++) {
-                game.grid[row][col].parent = null;
+        for (let row = 0; row < this.mapheight; row++) {
+            for (let col = 0; col < this.mapwidth; col++) {
+                this.grid[row][col].parent = null;
                 if (
-                    (game.grid[row][col].pathregion == 0) !=
+                    (this.grid[row][col].pathregion == 0) !=
                     (row == 0 ||
                         col == 0 ||
-                        row == game.mapheight - 1 ||
-                        col == game.mapwidth - 1)
+                        row == this.mapheight - 1 ||
+                        col == this.mapwidth - 1)
                 ) {
                     console.log(`Bad path region 0 at (${row}, ${col})`);
                     return false;
@@ -577,16 +577,16 @@ class Gamestate {
         }
 
         let regions = [];
-        for (let row = 1; row < game.mapheight - 1; row++) {
-            for (let col = 1; col < game.mapwidth - 1; col++) {
-                curr_tile = game.grid[row][col];
+        for (let row = 1; row < this.mapheight - 1; row++) {
+            for (let col = 1; col < this.mapwidth - 1; col++) {
+                curr_tile = this.grid[row][col];
                 //console.log(`Regions: ${regions.length} Tile (${row}, ${col}) iswater: ${curr_tile.iswater}, region: ${curr_tile.pathregion}`);
                 // check W, NW, N, NE tiles if same region, then copy parent
                 let adjtile = [
-                    game.grid[row][col - 1],
-                    game.grid[row - 1][col - 1],
-                    game.grid[row - 1][col],
-                    game.grid[row - 1][col + 1],
+                    this.grid[row][col - 1],
+                    this.grid[row - 1][col - 1],
+                    this.grid[row - 1][col],
+                    this.grid[row - 1][col + 1],
                 ];
                 for (let x = 0; x < adjtile.length; x++) {
                     if (
@@ -687,7 +687,7 @@ class Gamestate {
                             (col + 64 * this.lcr + 68 * this.prime + Math.floor(row / 4) * 12) %
                             128
                         ) &&
-                    !curr_tile.iswater &&
+                    !this.grid[row][col].iswater &&
                     this.grid[row][col].explorer != 0x0f
                 ) {
                     gathisme.grid[row][col].explorer = 0x0f;
