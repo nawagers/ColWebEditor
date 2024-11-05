@@ -338,7 +338,9 @@ class Gamestate {
     get landroutegrid() {
         console.log('Computing land routing');
         function isconnected(origin, dest) {
+            console.log(`isconnected ${typeof this}`);
             function neighbors(tile) {
+                console.log(`neighbors ${typeof this}`);
                 let dir = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
                 let tile_neighbors = []
                 dir.forEach(([row, col]) => {
