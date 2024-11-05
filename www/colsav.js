@@ -337,18 +337,16 @@ class Gamestate {
     }
     get landroutegrid() {
         console.log('Computing land routing');
-        function isconnected(origin, dest) {
-            console.log(`isconnected ${typeof this}`);
-            function neighbors(tile) {
-                console.log(`neighbors ${typeof this}`);
+        function isconnected(game, origin, dest) {
+            function neighbors(game, tile) {
                 let dir = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
                 let tile_neighbors = []
                 dir.forEach(([row, col]) => {
                     if (tile.row + row > 0 && tile.col + col >= 0 &&
-                        tile.row + row + 1 < this.mapheight && tile.col + col < this.mapwidth) {
-                        if (!this.grid[tile.row + row][tile.col + col].iswater) {
+                        tile.row + row + 1 < game.mapheight && tile.col + col < game.mapwidth) {
+                        if (!game.grid[tile.row + row][tile.col + col].iswater) {
 
-                            tile_neighbors.push(this.grid[tile.row + row][tile.col + col])
+                            tile_neighbors.push(game.grid[tile.row + row][tile.col + col])
                         }
                     }
                 }
@@ -359,7 +357,7 @@ class Gamestate {
             routes.add(origin);
             for (let ii = 0; ii < 6; ii++) {
                 let new_conn = new Set();
-                routes.forEach((elem) => { neighbors(elem).forEach((tile) => { new_conn.add(tile) }); });
+                routes.forEach((elem) => { neighbors(game, elem).forEach((tile) => { new_conn.add(tile) }); });
                 routes = routes.union(new_conn);
                 if (routes.has(dest)) {
                     return true;
@@ -421,7 +419,7 @@ class Gamestate {
                     if (dest == null) {
                         continue;
                     }
-                    if (isconnected(this.landgrid[row][col].anchor, dest)) {
+                    if (isconnected(this, this.landgrid[row][col].anchor, dest)) {
                         // connect
                         this.landgrid[row][col][oridir] = true;
                         this.landgrid[row + rowshift][col + colshift][destdir] = true;
@@ -450,9 +448,9 @@ class Gamestate {
                 let tile_neighbors = []
                 dir.forEach(([row, col]) => {
                     if (tile.row + row > 0 && tile.col + col >= 0 &&
-                        tile.row + row + 1 < this.mapheight && tile.col + col < this.mapwidth) {
-                        if (this.grid[tile.row + row][tile.col + col].iswater) {
-                            tile_neighbors.push(this.grid[tile.row + row][tile.col + col])
+                        tile.row + row + 1 < game.mapheight && tile.col + col < game.mapwidth) {
+                        if (game.grid[tile.row + row][tile.col + col].iswater) {
+                            tile_neighbors.push(game.grid[tile.row + row][tile.col + col])
                         }
                     }
                 }
@@ -463,7 +461,7 @@ class Gamestate {
             routes.add(origin);
             for (let ii = 0; ii < 6; ii++) {
                 let new_conn = new Set();
-                routes.forEach((elem) => { neighbors(elem).forEach((tile) => { new_conn.add(tile) }); });
+                routes.forEach((elem) => { neighbors(game, elem).forEach((tile) => { new_conn.add(tile) }); });
                 routes = routes.union(new_conn);
                 if (routes.has(dest)) {
                     return true;
@@ -528,7 +526,7 @@ class Gamestate {
                     if (dest == null) {
                         continue;
                     }
-                    if (isconnected(this.seagrid[row][col].anchor, dest)) {
+                    if (isconnected(this, this.seagrid[row][col].anchor, dest)) {
                         // connect
                         this.seagrid[row][col][oridir] = true;
                         this.seagrid[row + rowshift][col + colshift][destdir] = true;
